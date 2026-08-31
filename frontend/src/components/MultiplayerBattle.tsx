@@ -16,14 +16,14 @@ import {
 } from '@battleship/shared';
 import { socketService } from '../services/socket';
 import { StakingPanel } from './StakingPanel';
-import { WalletConnect } from './WalletConnect';
 import { BoardGrid } from './BoardGrid';
+import { FleetPanel } from './FleetPanel';
+import { MatchInfoPanel } from './MatchInfoPanel';
 import { ShipPlacementPanel } from './ShipPlacementPanel';
-import { GameLog, LogEntry } from './GameLog';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { BATTLESHIP_STAKING_ADDRESS, BATTLESHIP_STAKING_ABI } from '../config/contract';
 import { ZERO_G_GALILEO_TESTNET } from '../config/wagmi';
-import { ArrowLeft, RefreshCw, Trophy, Flame, Shield, Coins, ExternalLink, Clock, AlertTriangle, CheckCircle2, Eye, BarChart3 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, Flame, Shield, Coins, ExternalLink, CheckCircle2, Eye, BarChart3, Info, BookOpen, MessageSquare, Settings, Target } from 'lucide-react';
 
 interface MultiplayerBattleProps {
   matchData: {
@@ -74,7 +74,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
   const [hoverPos, setHoverPos] = useState<Position | null>(null);
 
   // Logs & Stats
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
   const [myShots, setMyShots] = useState(0);
   const [myHits, setMyHits] = useState(0);
   const [oppShots, setOppShots] = useState(0);
@@ -140,12 +140,12 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         if (data.hit) {
           setMyHits((prev) => prev + 1);
           if (data.sunkShipType) {
-            addLog('PLAYER', `HIT at ${coordStr}! Enemy ${data.sunkShipType} SUNK!`, 'sunk');
+            addLog('PLAYER', `You fired at ${coordStr} — SUNK ${data.sunkShipType}!`, 'sunk');
           } else {
-            addLog('PLAYER', `HIT reported at ${coordStr}!`, 'hit');
+            addLog('PLAYER', `You fired at ${coordStr} — HIT`, 'hit');
           }
         } else {
-          addLog('PLAYER', `Splash at ${coordStr}. Miss.`, 'miss');
+          addLog('PLAYER', `You fired at ${coordStr} — MISS`, 'miss');
         }
       } else {
         setOppShots((prev) => prev + 1);
@@ -158,12 +158,12 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         if (data.hit) {
           setOppHits((prev) => prev + 1);
           if (data.sunkShipType) {
-            addLog('AI', `Opponent struck ${coordStr}! Your ${data.sunkShipType} was SUNK!`, 'sunk');
+            addLog('AI', `Opponent fired at ${coordStr} — SUNK ${data.sunkShipType}!`, 'sunk');
           } else {
-            addLog('AI', `Opponent hit your fleet at ${coordStr}!`, 'hit');
+            addLog('AI', `Opponent fired at ${coordStr} — HIT`, 'hit');
           }
         } else {
-          addLog('AI', `Opponent fired at ${coordStr} and missed.`, 'miss');
+          addLog('AI', `Opponent fired at ${coordStr} — MISS`, 'miss');
         }
       }
     });
@@ -295,34 +295,37 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
   const myAccuracy = myShots > 0 ? Math.round((myHits / myShots) * 100) : 0;
   const oppAccuracy = oppShots > 0 ? Math.round((oppHits / oppShots) * 100) : 0;
 
+  const myShipsAlive = FLEET_SHIPS.length - myBoard.ships.filter((s) => s.hits >= s.size).length;
+  const oppShipsAlive = opponentBoard ? FLEET_SHIPS.length - opponentBoard.ships.filter((s) => s.hits >= s.size).length : 5;
+
   return (
-    <div className="flex flex-col items-center w-full max-w-7xl mx-auto space-y-6">
-      {/* Top Header */}
-      <div className="w-full flex items-center justify-between bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+    <div className="flex flex-col justify-between min-h-[calc(100vh-80px)] w-full max-w-[1850px] mx-auto px-4 lg:px-8 py-4 space-y-5">
+      {/* Header Bar */}
+      <div className="w-full flex items-center justify-between bg-[#091015] p-3.5 rounded-xl border border-slate-800 font-mono text-xs shadow-xl">
         <button
           onClick={onExit}
-          className="flex items-center space-x-2 text-slate-400 hover:text-cyan-400 text-sm font-semibold transition"
+          className="flex items-center space-x-2 text-slate-400 hover:text-emerald-400 font-bold transition cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Exit Lobby</span>
+          <span>EXIT LOBBY</span>
         </button>
 
         <div className="flex items-center space-x-3">
-          <span className="font-mono text-xs text-cyan-400 bg-slate-950 px-3 py-1 rounded-full border border-slate-800 font-bold flex items-center gap-1.5">
-            <Coins className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="font-mono text-xs text-emerald-400 bg-[#050B0E] px-3 py-1 rounded-lg border border-slate-800 font-bold flex items-center gap-1.5">
+            <Coins className="w-3.5 h-3.5 text-emerald-400" />
             STAKE: {matchData.stakeAmountEth} 0G
           </span>
 
           {phase === 'PLAYING' && (
-            <div className="flex items-center space-x-2 px-4 py-1.5 rounded-full bg-slate-950 border border-slate-800 text-xs font-semibold">
+            <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-[#050B0E] border border-slate-800 text-[11px] font-bold">
               {isMyTurn ? (
                 <>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                   <span className="text-emerald-400">YOUR TURN — Target opponent grid</span>
                 </>
               ) : (
                 <>
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                   <span className="text-amber-400">OPPONENT'S TURN...</span>
                 </>
               )}
@@ -331,7 +334,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
 
           {phase === 'FINISHED' && (
             <div className="flex items-center space-x-3">
-              <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-wider uppercase flex items-center gap-2 ${
+              <span className={`px-3 py-1 rounded-lg text-xs font-black tracking-wider uppercase flex items-center gap-1.5 ${
                 isWinner
                   ? 'bg-emerald-950 border border-emerald-500 text-emerald-400'
                   : 'bg-red-950 border border-red-500 text-red-400'
@@ -342,7 +345,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
 
               <button
                 onClick={() => setShowStatsModal(true)}
-                className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-md shadow-indigo-600/30"
+                className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-3 py-1 rounded-lg transition shadow-md shadow-emerald-500/30 cursor-pointer"
               >
                 <BarChart3 className="w-3.5 h-3.5" />
                 <span>Accuracy & Claim</span>
@@ -350,8 +353,6 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
             </div>
           )}
         </div>
-
-        <WalletConnect />
       </div>
 
       {/* Main View Area */}
@@ -366,11 +367,11 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
           />
         </div>
       ) : phase === 'PLACEMENT' ? (
-        <div className="grid lg:grid-cols-3 gap-8 w-full items-start">
-          <div className="lg:col-span-2 flex justify-center">
+        <div className="grid lg:grid-cols-12 gap-6 w-full items-start">
+          <div className="lg:col-span-8 flex justify-center">
             <BoardGrid
-              title="Deploy Fleet"
-              subtitle={isMyReady ? 'Fleet locked. Awaiting opponent fleet readiness...' : 'Position all 5 fleet vessels'}
+              title="YOUR WATERS"
+              subtitle={isMyReady ? 'FLEET LOCKED — Awaiting opponent readiness...' : 'DEFEND YOUR FLEET — Hover to position ships'}
               grid={myBoard.grid}
               ships={myBoard.ships}
               interactive={!isMyReady}
@@ -380,10 +381,11 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
               hoverOrientation={orientation}
               isValidHover={isValidHover}
               onCellHover={setHoverPos}
+              actionButtonLabel="PLACE / MOVE FLEET"
             />
           </div>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="lg:col-span-4 flex flex-col items-center gap-4">
             <ShipPlacementPanel
               selectedShipType={selectedShipType}
               onSelectShipType={setSelectedShipType}
@@ -398,69 +400,123 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
             />
 
             {isMyReady && (
-              <div className="w-full bg-slate-900/90 p-4 rounded-2xl border border-cyan-500/30 text-center font-mono text-xs text-cyan-300">
-                ✓ Fleet Locked & Ready!
+              <div className="w-full bg-[#091015] p-4 rounded-xl border border-emerald-500/40 text-center font-mono text-xs text-emerald-400 font-bold">
+                ✓ FLEET LOCKED & READY FOR ENGAGEMENT
               </div>
             )}
           </div>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-3 gap-6 w-full items-start">
-          {/* Enemy Ocean Radar (Reveals all opponent ships when match ends!) */}
-          <div className="flex justify-center">
-            <BoardGrid
-              title={phase === 'FINISHED' ? 'Enemy Radar (All Ships Revealed)' : 'Enemy Ocean Radar'}
-              subtitle={
-                phase === 'FINISHED'
-                  ? 'Gold cells reveal all opponent ship locations'
-                  : isMyTurn
-                  ? 'Click to fire missile'
-                  : 'Awaiting opponent move'
-              }
-              grid={phase === 'FINISHED' && opponentBoard ? opponentBoard.grid : enemyOceanTracking}
-              ships={opponentBoard?.ships || []}
-              isEnemyView={true}
-              revealShips={phase === 'FINISHED'}
-              interactive={isMyTurn && phase === 'PLAYING'}
-              onCellClick={handleFireShot}
-            />
+        /* Widescreen Responsive Console View with Central Radar Target Divider (⊕) */
+        <div className="grid grid-cols-12 gap-6 w-full items-stretch flex-1">
+          {/* Left Panel: YOUR FLEET (3 cols) */}
+          <div className="col-span-12 lg:col-span-3">
+            <FleetPanel ships={myBoard.ships} onSurrender={onExit} />
           </div>
 
-          {/* Player Fleet Grid */}
-          <div className="flex justify-center">
-            <BoardGrid
-              title="Your Ocean Grid"
-              subtitle="Defend your position"
-              grid={myBoard.grid}
-              ships={myBoard.ships}
-              isEnemyView={false}
-              interactive={false}
-            />
+          {/* Middle Section: DUAL BOARDS + CENTRAL RADAR DIVIDER (6 cols) */}
+          <div className="col-span-12 lg:col-span-6 flex flex-col items-center justify-center">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-center justify-items-center w-full">
+              {/* YOUR WATERS */}
+              <div className="w-full max-w-[480px]">
+                <BoardGrid
+                  title="YOUR WATERS"
+                  subtitle="DEFEND YOUR FLEET"
+                  grid={myBoard.grid}
+                  ships={myBoard.ships}
+                  isEnemyView={false}
+                  interactive={false}
+                  actionButtonLabel="YOUR WATERS (DEFENSE)"
+                />
+              </div>
+
+              {/* Central Target Radar Divider (⊕) matching reference image */}
+              <div className="hidden md:flex flex-col items-center justify-center space-y-2 text-[#64748B]">
+                <div className="w-[1px] h-20 bg-gradient-to-b from-transparent via-[#1C2C3C] to-transparent"></div>
+                <div className="w-7 h-7 rounded-full border border-[#1C2C3C] flex items-center justify-center text-slate-500 bg-[#060D12]">
+                  <Target className="w-3.5 h-3.5 text-[#64748B]" />
+                </div>
+                <div className="w-[1px] h-20 bg-gradient-to-b from-transparent via-[#1C2C3C] to-transparent"></div>
+              </div>
+
+              {/* ENEMY WATERS */}
+              <div className="w-full max-w-[480px]">
+                <BoardGrid
+                  title="ENEMY WATERS"
+                  subtitle={
+                    phase === 'FINISHED'
+                      ? 'DESTROY ENEMY FLEET (REVEALED)'
+                      : isMyTurn
+                      ? 'SELECT A TARGET COORDINATE'
+                      : 'AWAITING OPPONENT MOVE'
+                  }
+                  grid={phase === 'FINISHED' && opponentBoard ? opponentBoard.grid : enemyOceanTracking}
+                  ships={opponentBoard?.ships || []}
+                  isEnemyView={true}
+                  revealShips={phase === 'FINISHED'}
+                  interactive={isMyTurn && phase === 'PLAYING'}
+                  onCellClick={handleFireShot}
+                  actionButtonLabel={
+                    phase === 'FINISHED'
+                      ? 'MATCH ENDED'
+                      : isMyTurn
+                      ? 'FIRE A SHOT'
+                      : 'SELECT A TARGET COORDINATE'
+                  }
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Combat Feed Log */}
-          <div className="flex justify-center h-full">
-            <GameLog
+          {/* Right Panel: MATCH INFO & STAKE POOL & LOGS (3 cols) */}
+          <div className="col-span-12 lg:col-span-3">
+            <MatchInfoPanel
+              playerAddress={address}
+              opponentAddress={matchData.player2Name || 'OPPONENT'}
+              opponentName={matchData.player2Name || 'PLAYER 02'}
+              isMyTurn={isMyTurn}
+              playerShipsLeft={myShipsAlive}
+              opponentShipsLeft={oppShipsAlive}
+              stakeAmountEth={matchData.stakeAmountEth}
+              turnCount={myShots + oppShots}
               logs={logs}
-              playerShots={myShots}
-              playerHits={myHits}
-              aiShots={oppShots}
-              aiHits={oppHits}
             />
           </div>
         </div>
       )}
 
+      {/* Bottom Console Status Bar */}
+      <div className="w-full flex flex-col sm:flex-row items-center justify-between py-3 px-5 bg-[#091015] border border-slate-800 rounded-xl font-mono text-xs text-slate-400">
+        <div className="flex items-center space-x-2">
+          <Info className="w-4 h-4 text-emerald-400" />
+          <span>Connected to <span className="text-emerald-400 font-bold">0G Network</span></span>
+          <span className="mx-2 text-slate-600">•</span>
+          <span className="text-slate-300">Good Luck, Commander.</span>
+        </div>
+
+        <div className="flex items-center space-x-4 mt-2 sm:mt-0">
+          <button className="hover:text-emerald-400 transition cursor-pointer" title="Documentation">
+            <BookOpen className="w-4 h-4" />
+          </button>
+          <button className="hover:text-emerald-400 transition cursor-pointer" title="Match Chat">
+            <MessageSquare className="w-4 h-4" />
+          </button>
+          <button className="hover:text-emerald-400 transition cursor-pointer" title="Settings">
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
       {/* Accuracy Stats & Winner Declaration Modal */}
       {showStatsModal && phase === 'FINISHED' && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl shadow-indigo-950/50 relative">
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in font-mono">
+          <div className="bg-[#091015] border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl relative">
             <button
               onClick={() => setShowStatsModal(false)}
-              className="absolute top-4 right-4 text-slate-500 hover:text-white p-1 rounded-lg transition"
-              title="Inspect Revealed Battlefield"
+              className="absolute top-4 right-4 text-slate-500 hover:text-white p-1 rounded-lg transition cursor-pointer"
+              title="Inspect Grid"
             >
-              <Eye className="w-5 h-5 text-cyan-400" />
+              <Eye className="w-5 h-5 text-emerald-400" />
             </button>
 
             <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-4">
@@ -486,46 +542,12 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
               </h3>
             </div>
 
-            <p className="text-slate-400 text-xs mb-6">
-              {isWinner
-                ? `You won the battle! Claim the pooled 0G token escrow stake of ${totalPayoutEth} 0G.`
-                : 'Your opponent succeeded in sinking all of your fleet vessels.'}
-            </p>
-
-            {/* Accuracy Performance Breakdown Card */}
-            <div className="space-y-3 mb-6 font-mono text-xs text-left bg-slate-950 p-4 rounded-xl border border-slate-800">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                <span className="text-slate-400 font-sans font-semibold">Multiplayer Stats</span>
-                <span className="text-cyan-400 font-bold">ACCURACY REPORT</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2.5 h-2.5 rounded-full ${isWinner ? 'bg-amber-400' : 'bg-cyan-400'}`}></div>
-                  <span className="text-slate-300 font-sans">Your Accuracy:</span>
-                </div>
-                <span className="text-cyan-300 font-bold text-sm">
-                  {myAccuracy}% <span className="text-slate-500 text-xs">({myHits}/{myShots} shots)</span>
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2.5 h-2.5 rounded-full ${!isWinner ? 'bg-amber-400' : 'bg-red-400'}`}></div>
-                  <span className="text-slate-300 font-sans">Opponent Accuracy:</span>
-                </div>
-                <span className="text-indigo-300 font-bold text-sm">
-                  {oppAccuracy}% <span className="text-slate-500 text-xs">({oppHits}/{oppShots} shots)</span>
-                </span>
-              </div>
-            </div>
-
             {/* Winner Payout Claim Box */}
             {isWinner && payoutSignature && (
-              <div className="mb-6 p-4 bg-slate-950 rounded-2xl border border-cyan-500/30 text-left space-y-3">
+              <div className="mb-6 p-4 bg-[#050B0E] rounded-2xl border border-emerald-500/30 text-left space-y-3">
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="text-slate-400">Total Escrow Pool:</span>
-                  <span className="text-cyan-300 font-bold text-sm">{totalPayoutEth} 0G</span>
+                  <span className="text-emerald-400 font-bold text-sm">{totalPayoutEth} 0G</span>
                 </div>
 
                 {isClaimSuccess && payoutTxHash ? (
@@ -538,17 +560,17 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
                       href={`${ZERO_G_GALILEO_TESTNET.blockExplorers.default.url}/tx/${payoutTxHash}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[10px] text-cyan-400 underline font-mono flex items-center gap-1"
+                      className="text-[10px] text-emerald-400 underline font-mono flex items-center gap-1"
                     >
                       <span>View Claim Tx on 0G Explorer</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
+                      <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
                 ) : (
                   <button
                     disabled={isClaimPending || isClaimMining}
                     onClick={handleClaimPayout}
-                    className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-sm shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs tracking-wider uppercase shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Shield className="w-4 h-4" />
                     <span>
@@ -566,14 +588,14 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
             <div className="flex gap-3">
               <button
                 onClick={() => setShowStatsModal(false)}
-                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition border border-slate-700 flex items-center justify-center gap-1.5"
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Eye className="w-4 h-4 text-cyan-400" />
-                <span>Inspect Grid</span>
+                <Eye className="w-4 h-4 text-emerald-400" />
+                <span>INSPECT GRID</span>
               </button>
               <button
                 onClick={onExit}
-                className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition"
+                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition uppercase cursor-pointer"
               >
                 Return to Lobby
               </button>
