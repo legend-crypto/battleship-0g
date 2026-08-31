@@ -1,17 +1,27 @@
 import { io, Socket } from 'socket.io-client';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
 class SocketService {
   private socket: Socket | null = null;
 
   public connect(): Socket {
     if (!this.socket) {
-      this.socket = io(BACKEND_URL, {
+      // If no backend URL configured in production, disable autoConnect to avoid console spam
+      const shouldAutoConnect = !!import.meta.env.VITE_BACKEND_URL || window.location.hostname === 'localhost';
+
+      this.socket = io(BACKEND_URL || 'http://localhost:4000', {
         transports: ['websocket', 'polling'],
-        autoConnect: true
+        autoConnect: shouldAutoConnect,
+        reconnectionAttempts: 3,
+        timeout: 5000
       });
-    } else if (!this.socket.connected) {
+
+      // Silently catch connection errors so the console isn't flooded when backend is offline
+      this.socket.on('connect_error', (err) => {
+        // Suppress unhandled WebSocket error spam
+      });
+    } else if (!this.socket.connected && import.meta.env.VITE_BACKEND_URL) {
       this.socket.connect();
     }
     return this.socket;

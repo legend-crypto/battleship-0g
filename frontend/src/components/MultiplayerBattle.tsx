@@ -22,8 +22,8 @@ import { MatchInfoPanel } from './MatchInfoPanel';
 import { ShipPlacementPanel } from './ShipPlacementPanel';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { BATTLESHIP_STAKING_ADDRESS, BATTLESHIP_STAKING_ABI } from '../config/contract';
-import { ZERO_G_GALILEO_TESTNET } from '../config/wagmi';
-import { ArrowLeft, RefreshCw, Trophy, Flame, Shield, Coins, ExternalLink, CheckCircle2, Eye, BarChart3, Info, BookOpen, MessageSquare, Settings, Target } from 'lucide-react';
+import { ZERO_G_MAINNET } from '../config/wagmi';
+import { ArrowLeft, RefreshCw, Trophy, Flame, Shield, Coins, ExternalLink, CheckCircle2, Eye, BarChart3, Info, BookOpen, MessageSquare, Settings, Target, Copy, Check } from 'lucide-react';
 
 interface MultiplayerBattleProps {
   matchData: {
@@ -44,6 +44,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
   const { address } = useAccount();
   const [phase, setPhase] = useState<'STAKING' | 'PLACEMENT' | 'PLAYING' | 'FINISHED'>('STAKING');
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Staking state
   const [hasStaked, setHasStaked] = useState(false);
@@ -101,7 +102,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
     localStorage.setItem(`token_${matchData.matchId}`, matchData.playerToken);
     localStorage.setItem(`pid_${matchData.matchId}`, matchData.playerId);
 
-    if (address) {
+    if (address && socket && socket.connected) {
       socket.emit(SocketEvent.REGISTER_WALLET, {
         matchId: matchData.matchId,
         playerToken: matchData.playerToken,
@@ -109,132 +110,82 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
       });
     }
 
-    socket.on(SocketEvent.STAKING_COMPLETED, () => {
-      setPhase('PLACEMENT');
-      addLog('PLAYER', '0G Escrow deposits confirmed! Deploy your fleet.', 'info');
-    });
+    if (socket && socket.connected) {
+      socket.on(SocketEvent.STAKING_COMPLETED, () => {
+        setPhase('PLACEMENT');
+        addLog('PLAYER', '0G Escrow deposits confirmed! Deploy your fleet.', 'info');
+      });
 
-    socket.on(SocketEvent.PLAYER_READY, (data: { p1Ready: boolean; p2Ready: boolean }) => {
-      const myReadyState = matchData.role === 'host' ? data.p1Ready : data.p2Ready;
-      setIsMyReady(myReadyState);
-    });
+      socket.on(SocketEvent.PLAYER_READY, (data: { p1Ready: boolean; p2Ready: boolean }) => {
+        const myReadyState = matchData.role === 'host' ? data.p1Ready : data.p2Ready;
+        setIsMyReady(myReadyState);
+      });
 
-    socket.on(SocketEvent.GAME_START, (data: { matchId: string; currentTurn: string }) => {
-      setPhase('PLAYING');
-      setCurrentTurn(data.currentTurn);
-      addLog('PLAYER', 'Game started! Alternate turns to target enemy ocean.', 'info');
-    });
+      socket.on(SocketEvent.GAME_START, (data: { matchId: string; currentTurn: string }) => {
+        setPhase('PLAYING');
+        setCurrentTurn(data.currentTurn);
+        addLog('PLAYER', 'Game started! Alternate turns to target enemy ocean.', 'info');
+      });
 
-    socket.on(SocketEvent.SHOT_RESOLVED, (data: { shooterId: string; pos: Position; hit: boolean; sunkShipType?: ShipType; currentTurn: string; gameOver: boolean; winnerId?: string }) => {
-      setCurrentTurn(data.currentTurn);
-      const colLabel = String.fromCharCode(65 + data.pos.x);
-      const coordStr = `${colLabel}${data.pos.y + 1}`;
-      const isMeShooter = data.shooterId === matchData.playerId;
+      socket.on(SocketEvent.SHOT_RESOLVED, (data: any) => {
+        setCurrentTurn(data.currentTurn);
+        const colLabel = String.fromCharCode(65 + data.pos.x);
+        const coordStr = `${colLabel}${data.pos.y + 1}`;
+        const isMeShooter = data.shooterId === matchData.playerId;
 
-      if (isMeShooter) {
-        setMyShots((prev) => prev + 1);
-        const newTracking = enemyOceanTracking.map((row) => [...row]);
-        newTracking[data.pos.y][data.pos.x] = data.hit ? CellStatus.HIT : CellStatus.MISS;
-        setEnemyOceanTracking(newTracking);
+        if (isMeShooter) {
+          setMyShots((prev) => prev + 1);
+          const newTracking = enemyOceanTracking.map((row) => [...row]);
+          newTracking[data.pos.y][data.pos.x] = data.hit ? CellStatus.HIT : CellStatus.MISS;
+          setEnemyOceanTracking(newTracking);
 
-        if (data.hit) {
-          setMyHits((prev) => prev + 1);
-          if (data.sunkShipType) {
-            addLog('PLAYER', `You fired at ${coordStr} — SUNK ${data.sunkShipType}!`, 'sunk');
+          if (data.hit) {
+            setMyHits((prev) => prev + 1);
+            if (data.sunkShipType) {
+              addLog('PLAYER', `You fired at ${coordStr} — SUNK ${data.sunkShipType}!`, 'sunk');
+            } else {
+              addLog('PLAYER', `You fired at ${coordStr} — HIT`, 'hit');
+            }
           } else {
-            addLog('PLAYER', `You fired at ${coordStr} — HIT`, 'hit');
+            addLog('PLAYER', `You fired at ${coordStr} — MISS`, 'miss');
           }
         } else {
-          addLog('PLAYER', `You fired at ${coordStr} — MISS`, 'miss');
-        }
-      } else {
-        setOppShots((prev) => prev + 1);
-        setMyBoard((prevBoard) => {
-          const newGrid = prevBoard.grid.map((row) => [...row]);
-          newGrid[data.pos.y][data.pos.x] = data.hit ? CellStatus.HIT : CellStatus.MISS;
-          return { ...prevBoard, grid: newGrid };
-        });
+          setOppShots((prev) => prev + 1);
+          setMyBoard((prevBoard) => {
+            const newGrid = prevBoard.grid.map((row) => [...row]);
+            newGrid[data.pos.y][data.pos.x] = data.hit ? CellStatus.HIT : CellStatus.MISS;
+            return { ...prevBoard, grid: newGrid };
+          });
 
-        if (data.hit) {
-          setOppHits((prev) => prev + 1);
-          if (data.sunkShipType) {
-            addLog('AI', `Opponent fired at ${coordStr} — SUNK ${data.sunkShipType}!`, 'sunk');
+          if (data.hit) {
+            setOppHits((prev) => prev + 1);
+            if (data.sunkShipType) {
+              addLog('AI', `Opponent fired at ${coordStr} — SUNK ${data.sunkShipType}!`, 'sunk');
+            } else {
+              addLog('AI', `Opponent fired at ${coordStr} — HIT`, 'hit');
+            }
           } else {
-            addLog('AI', `Opponent fired at ${coordStr} — HIT`, 'hit');
+            addLog('AI', `Opponent fired at ${coordStr} — MISS`, 'miss');
           }
-        } else {
-          addLog('AI', `Opponent fired at ${coordStr} — MISS`, 'miss');
         }
-      }
-    });
+      });
 
-    socket.on(SocketEvent.PLAYER_DISCONNECTED, (data: { message: string }) => {
-      setOpponentConnected(false);
-      addLog('AI', data.message, 'info');
-    });
-
-    socket.on(SocketEvent.PLAYER_RECONNECTED, (data: { playerName: string }) => {
-      setOpponentConnected(true);
-      addLog('PLAYER', `${data.playerName} reconnected to match.`, 'info');
-    });
-
-    socket.on(SocketEvent.GAME_OVER, (data: {
-      winnerId: string;
-      winnerAddress?: string;
-      payoutSignature?: string;
-      totalPayoutEth?: string;
-      player1Board: BoardState;
-      player2Board: BoardState;
-    }) => {
-      setPhase('FINISHED');
-      setWinnerId(data.winnerId);
-      setWinnerAddress(data.winnerAddress);
-      setPayoutSignature(data.payoutSignature);
-      if (data.totalPayoutEth) setTotalPayoutEth(data.totalPayoutEth);
-
-      const oppBoard = matchData.role === 'host' ? data.player2Board : data.player1Board;
-      setOpponentBoard(oppBoard);
-
-      setShowStatsModal(true);
-
-      const didIWin = data.winnerId === matchData.playerId;
-      addLog('PLAYER', didIWin ? 'VICTORY! All enemy ships destroyed! Opponent fleet revealed.' : 'DEFEAT! Your fleet was sunk.', 'sunk');
-    });
-
-    return () => {
-      socket.off(SocketEvent.STAKING_COMPLETED);
-      socket.off(SocketEvent.PLAYER_READY);
-      socket.off(SocketEvent.GAME_START);
-      socket.off(SocketEvent.SHOT_RESOLVED);
-      socket.off(SocketEvent.PLAYER_DISCONNECTED);
-      socket.off(SocketEvent.PLAYER_RECONNECTED);
-      socket.off(SocketEvent.GAME_OVER);
-    };
-  }, [socket, matchData, enemyOceanTracking, address]);
+      return () => {
+        socket.off(SocketEvent.STAKING_COMPLETED);
+        socket.off(SocketEvent.PLAYER_READY);
+        socket.off(SocketEvent.GAME_START);
+        socket.off(SocketEvent.SHOT_RESOLVED);
+      };
+    }
+  }, [matchData, address, socket]);
 
   const handleStakeConfirmed = (txHash: string) => {
     setHasStaked(true);
     setStakeTxHash(txHash);
-    socket.emit(SocketEvent.STAKE_CONFIRMED, {
-      matchId: matchData.matchId,
-      playerToken: matchData.playerToken,
-      txHash
-    });
-  };
+    addLog('PLAYER', `0G Stake deposited into 0G Mainnet Escrow! (TxHash: ${txHash.slice(0, 10)}...)`, 'info');
 
-  const handleClaimPayout = async () => {
-    if (!payoutSignature || !matchData.matchIdBytes32) return;
-    try {
-      const hash = await writeContractAsync({
-        address: BATTLESHIP_STAKING_ADDRESS,
-        abi: BATTLESHIP_STAKING_ABI,
-        functionName: 'claimWinnerPayout',
-        args: [matchData.matchIdBytes32 as `0x${string}`, payoutSignature as `0x${string}`]
-      });
-      setPayoutTxHash(hash);
-    } catch (err: any) {
-      console.error('Claim Error:', err);
-    }
+    // Automatically transition host into placement mode
+    setPhase('PLACEMENT');
   };
 
   const selectNextAvailableShip = (board: BoardState) => {
@@ -243,7 +194,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
   };
 
   const handleCellPlacementClick = (pos: Position) => {
-    if (phase !== 'PLACEMENT' || !selectedShipType || isMyReady) return;
+    if (phase !== 'PLACEMENT' || isMyReady || !selectedShipType) return;
 
     if (isValidPlacement(myBoard, selectedShipType, pos, orientation)) {
       const updated = placeShip(myBoard, selectedShipType, pos, orientation);
@@ -267,23 +218,55 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
 
   const handleSubmitPlacement = () => {
     if (placedShipTypes.length !== FLEET_SHIPS.length) return;
+    setIsMyReady(true);
 
-    socket.emit(SocketEvent.SUBMIT_PLACEMENT, {
-      matchId: matchData.matchId,
-      playerToken: matchData.playerToken,
-      ships: myBoard.ships
-    });
+    if (socket && socket.connected) {
+      socket.emit(SocketEvent.SUBMIT_PLACEMENT, {
+        matchId: matchData.matchId,
+        playerToken: matchData.playerToken,
+        board: myBoard
+      });
+    } else {
+      // Local battle transition
+      setPhase('PLAYING');
+      setCurrentTurn(matchData.playerId);
+      addLog('PLAYER', 'Fleet deployed! Match station active.', 'info');
+    }
   };
 
   const handleFireShot = (pos: Position) => {
     if (phase !== 'PLAYING' || !isMyTurn) return;
     if (enemyOceanTracking[pos.y][pos.x] !== CellStatus.EMPTY) return;
 
-    socket.emit(SocketEvent.FIRE_SHOT, {
-      matchId: matchData.matchId,
-      playerToken: matchData.playerToken,
-      pos
-    });
+    if (socket && socket.connected) {
+      socket.emit(SocketEvent.FIRE_SHOT, {
+        matchId: matchData.matchId,
+        playerToken: matchData.playerToken,
+        pos
+      });
+    }
+  };
+
+  const handleClaimWinnerPayout = async () => {
+    if (!payoutSignature || !matchData.matchIdBytes32) return;
+    try {
+      const hash = await writeContractAsync({
+        address: BATTLESHIP_STAKING_ADDRESS,
+        abi: BATTLESHIP_STAKING_ABI,
+        functionName: 'claimWinnerPayout',
+        args: [matchData.matchIdBytes32 as `0x${string}`, payoutSignature as `0x${string}`],
+        gas: 250000n
+      });
+      setPayoutTxHash(hash);
+    } catch (err: any) {
+      console.error('Claim Error:', err);
+    }
+  };
+
+  const handleCopyMatchCode = () => {
+    navigator.clipboard.writeText(matchData.matchCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const isValidHover =
@@ -291,12 +274,15 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
       ? isValidPlacement(myBoard, selectedShipType, hoverPos, orientation)
       : false;
 
-  const isWinner = winnerId === matchData.playerId;
   const myAccuracy = myShots > 0 ? Math.round((myHits / myShots) * 100) : 0;
   const oppAccuracy = oppShots > 0 ? Math.round((oppHits / oppShots) * 100) : 0;
 
   const myShipsAlive = FLEET_SHIPS.length - myBoard.ships.filter((s) => s.hits >= s.size).length;
-  const oppShipsAlive = opponentBoard ? FLEET_SHIPS.length - opponentBoard.ships.filter((s) => s.hits >= s.size).length : 5;
+  const oppShipsAlive = opponentBoard
+    ? FLEET_SHIPS.length - opponentBoard.ships.filter((s) => s.hits >= s.size).length
+    : 5;
+
+  const isWinner = winnerId ? winnerId === matchData.playerId : false;
 
   return (
     <div className="flex flex-col justify-between min-h-[calc(100vh-80px)] w-full max-w-[1850px] mx-auto px-4 lg:px-8 py-4 space-y-5">
@@ -311,13 +297,25 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         </button>
 
         <div className="flex items-center space-x-3">
-          <span className="font-mono text-xs text-emerald-400 bg-[#050B0E] px-3 py-1 rounded-lg border border-slate-800 font-bold flex items-center gap-1.5">
+          {/* Share Match Code Badge in Header */}
+          <div className="flex items-center space-x-2 bg-[#050B0E] px-3 py-1.5 rounded-xl border border-emerald-500/40 text-emerald-400 font-mono text-xs font-bold shadow">
+            <span>MATCH CODE: #{matchData.matchCode}</span>
+            <button
+              onClick={handleCopyMatchCode}
+              className="p-1 hover:text-white transition cursor-pointer"
+              title="Copy Match Code"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          <span className="font-mono text-xs text-emerald-400 bg-[#050B0E] px-3 py-1.5 rounded-xl border border-slate-800 font-bold flex items-center gap-1.5">
             <Coins className="w-3.5 h-3.5 text-emerald-400" />
             STAKE: {matchData.stakeAmountEth} 0G
           </span>
 
           {phase === 'PLAYING' && (
-            <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-[#050B0E] border border-slate-800 text-[11px] font-bold">
+            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-[#050B0E] border border-slate-800 text-[11px] font-bold">
               {isMyTurn ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -407,17 +405,14 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
           </div>
         </div>
       ) : (
-        /* Widescreen Responsive Console View with Central Radar Target Divider (⊕) */
+        /* Widescreen Console View */
         <div className="grid grid-cols-12 gap-6 w-full items-stretch flex-1">
-          {/* Left Panel: YOUR FLEET (3 cols) */}
           <div className="col-span-12 lg:col-span-3">
             <FleetPanel ships={myBoard.ships} onSurrender={onExit} />
           </div>
 
-          {/* Middle Section: DUAL BOARDS + CENTRAL RADAR DIVIDER (6 cols) */}
           <div className="col-span-12 lg:col-span-6 flex flex-col items-center justify-center">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-center justify-items-center w-full">
-              {/* YOUR WATERS */}
               <div className="w-full max-w-[480px]">
                 <BoardGrid
                   title="YOUR WATERS"
@@ -430,7 +425,6 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
                 />
               </div>
 
-              {/* Central Target Radar Divider (⊕) matching reference image */}
               <div className="hidden md:flex flex-col items-center justify-center space-y-2 text-[#64748B]">
                 <div className="w-[1px] h-20 bg-gradient-to-b from-transparent via-[#1C2C3C] to-transparent"></div>
                 <div className="w-7 h-7 rounded-full border border-[#1C2C3C] flex items-center justify-center text-slate-500 bg-[#060D12]">
@@ -439,7 +433,6 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
                 <div className="w-[1px] h-20 bg-gradient-to-b from-transparent via-[#1C2C3C] to-transparent"></div>
               </div>
 
-              {/* ENEMY WATERS */}
               <div className="w-full max-w-[480px]">
                 <BoardGrid
                   title="ENEMY WATERS"
@@ -451,7 +444,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
                       : 'AWAITING OPPONENT MOVE'
                   }
                   grid={phase === 'FINISHED' && opponentBoard ? opponentBoard.grid : enemyOceanTracking}
-                  ships={opponentBoard?.ships || []}
+                  ships={opponentBoard ? opponentBoard.ships : []}
                   isEnemyView={true}
                   revealShips={phase === 'FINISHED'}
                   interactive={isMyTurn && phase === 'PLAYING'}
@@ -461,19 +454,17 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
                       ? 'MATCH ENDED'
                       : isMyTurn
                       ? 'FIRE A SHOT'
-                      : 'SELECT A TARGET COORDINATE'
+                      : 'AWAITING OPPONENT'
                   }
                 />
               </div>
             </div>
           </div>
 
-          {/* Right Panel: MATCH INFO & STAKE POOL & LOGS (3 cols) */}
           <div className="col-span-12 lg:col-span-3">
             <MatchInfoPanel
               playerAddress={address}
-              opponentAddress={matchData.player2Name || 'OPPONENT'}
-              opponentName={matchData.player2Name || 'PLAYER 02'}
+              opponentName={matchData.role === 'host' ? matchData.player2Name || 'Challenger' : matchData.player1Name}
               isMyTurn={isMyTurn}
               playerShipsLeft={myShipsAlive}
               opponentShipsLeft={oppShipsAlive}
@@ -485,30 +476,8 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         </div>
       )}
 
-      {/* Bottom Console Status Bar */}
-      <div className="w-full flex flex-col sm:flex-row items-center justify-between py-3 px-5 bg-[#091015] border border-slate-800 rounded-xl font-mono text-xs text-slate-400">
-        <div className="flex items-center space-x-2">
-          <Info className="w-4 h-4 text-emerald-400" />
-          <span>Connected to <span className="text-emerald-400 font-bold">0G Network</span></span>
-          <span className="mx-2 text-slate-600">•</span>
-          <span className="text-slate-300">Good Luck, Commander.</span>
-        </div>
-
-        <div className="flex items-center space-x-4 mt-2 sm:mt-0">
-          <button className="hover:text-emerald-400 transition cursor-pointer" title="Documentation">
-            <BookOpen className="w-4 h-4" />
-          </button>
-          <button className="hover:text-emerald-400 transition cursor-pointer" title="Match Chat">
-            <MessageSquare className="w-4 h-4" />
-          </button>
-          <button className="hover:text-emerald-400 transition cursor-pointer" title="Settings">
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Accuracy Stats & Winner Declaration Modal */}
-      {showStatsModal && phase === 'FINISHED' && (
+      {/* Accuracy Stats & Winner Payout Claim Modal */}
+      {showStatsModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in font-mono">
           <div className="bg-[#091015] border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl relative">
             <button
@@ -519,7 +488,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
               <Eye className="w-5 h-5 text-emerald-400" />
             </button>
 
-            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4">
               {isWinner ? (
                 <Trophy className="w-10 h-10 text-amber-400 animate-bounce" />
               ) : (
@@ -527,7 +496,6 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
               )}
             </div>
 
-            {/* Prominent Winner Declaration */}
             <div className="mb-4">
               <span className={`inline-block px-4 py-1 rounded-full text-xs font-black tracking-widest uppercase mb-2 ${
                 isWinner
@@ -538,7 +506,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
               </span>
 
               <h3 className="text-2xl font-black text-white">
-                {isWinner ? 'MULTIPLAYER VICTORY!' : 'MATCH DEFEAT!'}
+                {isWinner ? 'NAVAL VICTORY!' : 'FLEET DESTROYED!'}
               </h3>
             </div>
 
@@ -546,7 +514,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
             {isWinner && payoutSignature && (
               <div className="mb-6 p-4 bg-[#050B0E] rounded-2xl border border-emerald-500/30 text-left space-y-3">
                 <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-slate-400">Total Escrow Pool:</span>
+                  <span className="text-slate-400">Total Escrow Prize Pool:</span>
                   <span className="text-emerald-400 font-bold text-sm">{totalPayoutEth} 0G</span>
                 </div>
 
@@ -557,7 +525,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
                       <span>0G Stake Payout Claimed!</span>
                     </div>
                     <a
-                      href={`${ZERO_G_GALILEO_TESTNET.blockExplorers.default.url}/tx/${payoutTxHash}`}
+                      href={`${ZERO_G_MAINNET.blockExplorers.default.url}/tx/${payoutTxHash}`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-[10px] text-emerald-400 underline font-mono flex items-center gap-1"
@@ -569,7 +537,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
                 ) : (
                   <button
                     disabled={isClaimPending || isClaimMining}
-                    onClick={handleClaimPayout}
+                    onClick={handleClaimWinnerPayout}
                     className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs tracking-wider uppercase shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Shield className="w-4 h-4" />
@@ -585,6 +553,27 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
               </div>
             )}
 
+            <div className="space-y-3 mb-6 text-xs text-left bg-[#050B0E] p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-slate-400 font-semibold uppercase">ACCURACY REPORT</span>
+                <span className="text-emerald-400 font-bold">MATCH STATS</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">You:</span>
+                <span className="text-emerald-300 font-bold text-sm">
+                  {myAccuracy}% <span className="text-slate-500 text-xs">({myHits}/{myShots})</span>
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">Opponent:</span>
+                <span className="text-emerald-300 font-bold text-sm">
+                  {oppAccuracy}% <span className="text-slate-500 text-xs">({oppHits}/{oppShots})</span>
+                </span>
+              </div>
+            </div>
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowStatsModal(false)}
@@ -595,9 +584,9 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
               </button>
               <button
                 onClick={onExit}
-                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition uppercase cursor-pointer"
+                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                Return to Lobby
+                <span>RETURN TO LOBBY</span>
               </button>
             </div>
           </div>

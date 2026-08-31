@@ -8,6 +8,7 @@ import { ZERO_G_MAINNET } from '../config/wagmi';
 import { keccak256, encodePacked } from 'viem';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { ConvexErrorBoundary } from './ConvexErrorBoundary';
 
 interface MultiplayerLobbyProps {
   onBackToMenu: () => void;
@@ -24,6 +25,60 @@ interface MultiplayerLobbyProps {
   }) => void;
 }
 
+// Inner component that safely uses Convex hooks
+const RealtimeConvexLobbies: React.FC<{
+  onJoinMatch: (code: string, matchIdBytes32?: string) => void;
+  localLobbies: MatchSummary[];
+}> = ({ onJoinMatch, localLobbies }) => {
+  let convexLobbies: any[] | undefined;
+  try {
+    convexLobbies = useQuery(api.matches.listOpenLobbies);
+  } catch (e) {
+    console.warn('Convex listOpenLobbies query warning:', e);
+  }
+
+  const openLobbies: MatchSummary[] = convexLobbies
+    ? convexLobbies.map((m: any) => ({
+        matchId: m._id,
+        matchCode: m.matchIdBytes32 ? m.matchIdBytes32.slice(-6).toUpperCase() : '849201',
+        stakeAmountEth: m.stakeAmountEth || '0.1',
+        hostName: m.hostAddress ? `${m.hostAddress.slice(0, 6)}...${m.hostAddress.slice(-4)}` : 'Commander Host',
+        status: 'WAITING'
+      }))
+    : localLobbies;
+
+  return (
+    <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+      {openLobbies.length === 0 ? (
+        <div className="text-center py-6 text-slate-500 text-xs font-sans">
+          No open lobbies right now. Create a new staked match on the left!
+        </div>
+      ) : (
+        openLobbies.map((lobby) => (
+          <div
+            key={lobby.matchId}
+            className="p-3 bg-[#050B0E] border border-slate-800 rounded-xl flex items-center justify-between text-xs font-mono"
+          >
+            <div>
+              <span className="font-bold text-white block">{lobby.hostName}</span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                Stake: <strong className="text-emerald-400">{lobby.stakeAmountEth} 0G</strong> • #{lobby.matchCode}
+              </span>
+            </div>
+
+            <button
+              onClick={() => onJoinMatch(lobby.matchCode, lobby.matchId)}
+              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[11px] rounded-lg transition shadow cursor-pointer flex items-center gap-1"
+            >
+              <span>JOIN & STAKE</span>
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+};
+
 export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu, onMatchReady }) => {
   const { address, isConnected } = useAccount();
   const currentChainId = useChainId();
@@ -32,24 +87,18 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('0g_player_name') || 'Captain Alpha');
   const [stakeAmountEth, setStakeAmountEth] = useState('0.1');
   const [joinCode, setJoinCode] = useState('');
-  const [isWaiting, setIsWaiting] = useState(false);
-
-  const [createdMatchData, setCreatedMatchData] = useState<{
-    matchId: string;
-    matchCode: string;
-    matchIdBytes32: string;
-    stakeAmountEth: string;
-    playerToken: string;
-    playerId: string;
-  } | null>(null);
-
-  const [copied, setCopied] = useState(false);
+  const [localLobbies, setLocalLobbies] = useState<MatchSummary[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Convex Reactive Real-time Queries & Mutations
-  const convexLobbies = useQuery(api.matches.listOpenLobbies);
-  const createLobbyMutation = useMutation(api.matches.createLobby);
-  const joinLobbyMutation = useMutation(api.matches.joinLobby);
+  // Safe Convex mutation hooks
+  let createLobbyMutation: any;
+  let joinLobbyMutation: any;
+  try {
+    createLobbyMutation = useMutation(api.matches.createLobby);
+    joinLobbyMutation = useMutation(api.matches.joinLobby);
+  } catch (e) {
+    console.warn('Convex mutation hooks init warning:', e);
+  }
 
   const socket = socketService.getSocket();
 
@@ -57,16 +106,53 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
     localStorage.setItem('0g_player_name', playerName);
   }, [playerName]);
 
-  // Combine Convex real-time lobbies with local lobbies fallback
-  const openLobbies: MatchSummary[] = (convexLobbies || []).map((m: any) => ({
-    matchId: m._id,
-    matchCode: m.matchIdBytes32.slice(-6).toUpperCase(),
-    stakeAmountEth: m.stakeAmountEth || '0.1',
-    hostName: m.hostAddress ? `${m.hostAddress.slice(0, 6)}...${m.hostAddress.slice(-4)}` : 'Commander Host',
-    status: 'WAITING'
-  }));
+  // Load existing saved local lobbies
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('0g_open_lobbies');
+      if (saved) {
+        setLocalLobbies(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.warn('Failed to parse local lobbies:', e);
+    }
+  }, []);
 
-  // Fail-Proof Staked Match Creation using Convex + Local Storage
+  useEffect(() => {
+    if (socket && socket.connected) {
+      socket.emit(SocketEvent.LIST_MATCHES);
+
+      socket.on(SocketEvent.MATCH_LIST_UPDATED, (data: MatchSummary[]) => {
+        if (data && data.length > 0) setLocalLobbies(data);
+      });
+
+      socket.on(SocketEvent.PLAYER_JOINED, (data: any) => {
+        onMatchReady({
+          matchId: data.matchId,
+          matchCode: data.matchCode,
+          matchIdBytes32: data.matchIdBytes32,
+          stakeAmountEth: data.stakeAmountEth || '0.1',
+          playerToken: localStorage.getItem(`token_${data.matchId}`) || '',
+          playerId: localStorage.getItem(`pid_${data.matchId}`) || '',
+          role: 'host',
+          player1Name: data.player1?.name || playerName,
+          player2Name: data.player2?.name || 'Challenger'
+        });
+      });
+
+      socket.on(SocketEvent.ERROR, (data: { message: string }) => {
+        setErrorMsg(data.message);
+      });
+
+      return () => {
+        socket.off(SocketEvent.MATCH_LIST_UPDATED);
+        socket.off(SocketEvent.PLAYER_JOINED);
+        socket.off(SocketEvent.ERROR);
+      };
+    }
+  }, [socket, onMatchReady, playerName]);
+
+  // Instant Staked Match Creation ➔ Directly opens Escrow Staking & Fleet Station!
   const handleCreateMatch = async () => {
     if (!playerName.trim()) {
       setErrorMsg('Please enter your captain callsign first.');
@@ -79,7 +165,11 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
     }
 
     if (currentChainId !== ZERO_G_MAINNET.id && switchChain) {
-      switchChain({ chainId: ZERO_G_MAINNET.id });
+      try {
+        await switchChain({ chainId: ZERO_G_MAINNET.id });
+      } catch (e) {
+        console.warn('Network switch warning:', e);
+      }
     }
 
     setErrorMsg('');
@@ -91,19 +181,25 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
     const token = `token_host_${Date.now()}`;
     const pId = `pid_host_${Date.now()}`;
 
-    const matchData = {
-      matchId: rawMatchId,
-      matchCode: randomCode,
-      matchIdBytes32,
-      stakeAmountEth: stakeAmountEth || '0.1',
-      playerToken: token,
-      playerId: pId
-    };
-
     localStorage.setItem(`token_${rawMatchId}`, token);
     localStorage.setItem(`pid_${rawMatchId}`, pId);
 
-    // Push to Convex DB in real-time
+    // Save locally
+    const newLobby: MatchSummary = {
+      matchId: rawMatchId,
+      matchCode: randomCode,
+      stakeAmountEth: stakeAmountEth || '0.1',
+      hostName: playerName.trim(),
+      status: 'WAITING'
+    };
+
+    setLocalLobbies((prev) => {
+      const updated = [newLobby, ...prev];
+      localStorage.setItem('0g_open_lobbies', JSON.stringify(updated));
+      return updated;
+    });
+
+    // Try Convex mutation safely
     try {
       if (createLobbyMutation) {
         await createLobbyMutation({
@@ -114,7 +210,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
         });
       }
     } catch (e) {
-      console.warn('Convex createLobby warning:', e);
+      console.warn('Convex createLobby fallback:', e);
     }
 
     if (socket && socket.connected) {
@@ -125,8 +221,18 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
       });
     }
 
-    setCreatedMatchData(matchData);
-    setIsWaiting(true);
+    // DIRECTLY ENTER MATCH STATION & STAKING PANEL!
+    onMatchReady({
+      matchId: rawMatchId,
+      matchCode: randomCode,
+      matchIdBytes32,
+      stakeAmountEth: stakeAmountEth || '0.1',
+      playerToken: token,
+      playerId: pId,
+      role: 'host',
+      player1Name: playerName.trim(),
+      player2Name: 'Awaiting Opponent...'
+    });
   };
 
   const handleJoinMatch = async (codeToJoin?: string, matchBytes32Param?: string) => {
@@ -137,14 +243,9 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
     }
     setErrorMsg('');
 
-    const targetLobby = convexLobbies?.find((m: any) =>
-      m.matchIdBytes32.slice(-6).toUpperCase() === code || m.matchIdBytes32 === matchBytes32Param
-    );
+    const matchIdBytes32 = matchBytes32Param || keccak256(encodePacked(['string', 'string', 'uint256'], ['JOINED_MATCH', code, BigInt(Date.now())]));
 
-    const matchIdBytes32 = targetLobby?.matchIdBytes32 || keccak256(encodePacked(['string', 'string', 'uint256'], ['JOINED_MATCH', code, BigInt(Date.now())]));
-    const stakeEth = targetLobby?.stakeAmountEth || stakeAmountEth || '0.1';
-
-    if (address && joinLobbyMutation && targetLobby) {
+    if (address && joinLobbyMutation) {
       try {
         await joinLobbyMutation({
           matchIdBytes32,
@@ -152,44 +253,21 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
           guestToken: `token_guest_${Date.now()}`
         });
       } catch (e) {
-        console.warn('Convex joinLobby warning:', e);
+        console.warn('Convex joinLobby fallback:', e);
       }
     }
 
     onMatchReady({
-      matchId: targetLobby?._id || `match_joined_${Date.now()}`,
+      matchId: `match_joined_${Date.now()}`,
       matchCode: code || '849201',
       matchIdBytes32,
-      stakeAmountEth: stakeEth,
+      stakeAmountEth: stakeAmountEth || '0.1',
       playerToken: `token_guest_${Date.now()}`,
       playerId: `pid_guest_${Date.now()}`,
       role: 'guest',
-      player1Name: targetLobby?.hostAddress ? `${targetLobby.hostAddress.slice(0, 6)}...` : 'Host Admiral',
+      player1Name: 'Host Admiral',
       player2Name: playerName.trim()
     });
-  };
-
-  const handleStartChallengerBattle = () => {
-    if (!createdMatchData) return;
-    onMatchReady({
-      matchId: createdMatchData.matchId,
-      matchCode: createdMatchData.matchCode,
-      matchIdBytes32: createdMatchData.matchIdBytes32,
-      stakeAmountEth: createdMatchData.stakeAmountEth,
-      playerToken: createdMatchData.playerToken,
-      playerId: createdMatchData.playerId,
-      role: 'host',
-      player1Name: playerName.trim(),
-      player2Name: 'Challenger Commander'
-    });
-  };
-
-  const handleCopyCode = () => {
-    if (createdMatchData) {
-      navigator.clipboard.writeText(createdMatchData.matchCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
   };
 
   return (
@@ -218,188 +296,141 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
         </div>
       )}
 
-      {isWaiting && createdMatchData ? (
-        /* Waiting Room & Escrow Staking Room */
-        <div className="bg-[#091015] border border-slate-800 p-8 rounded-3xl text-center max-w-md mx-auto shadow-2xl relative space-y-6">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto animate-pulse">
-            <Users className="w-8 h-8 text-emerald-400" />
-          </div>
-
-          <div>
-            <h3 className="text-xl font-black text-white">STAKED LOBBY LIVE ON CONVEX</h3>
-            <p className="text-xs text-slate-400 font-sans mt-1">
-              Match Stake: <strong className="text-emerald-400 font-mono text-sm">{createdMatchData.stakeAmountEth} 0G</strong>
-            </p>
-          </div>
-
-          {/* 6-Character Match Code Card */}
-          <div className="p-4 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-2">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
-              SHARE MATCH CODE WITH OPPONENT
-            </span>
-            <div className="flex items-center justify-center gap-3">
-              <span className="font-mono text-3xl font-black text-emerald-400 tracking-widest">
-                #{createdMatchData.matchCode}
-              </span>
-              <button
-                onClick={handleCopyCode}
-                className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition border border-slate-700 cursor-pointer"
-                title="Copy Code"
-              >
-                {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5 text-emerald-400" />}
-              </button>
+      {/* Lobby Controls */}
+      <div className="grid md:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Create Match Form */}
+        <div className="md:col-span-6 bg-[#091015] border border-slate-800 p-6 rounded-3xl shadow-xl space-y-5">
+          <div className="flex items-center space-x-3 pb-3 border-b border-slate-800">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <Plus className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white uppercase">HOST NEW STAKED MATCH</h3>
+              <p className="text-[11px] text-slate-400 font-sans">Deposit 0G stake into 0G Mainnet Escrow</p>
             </div>
           </div>
 
-          {/* Start Battle / Launch Buttons */}
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={handleStartChallengerBattle}
-              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>LAUNCH BATTLE STATION</span>
-            </button>
+          <div className="space-y-4 text-xs">
+            <div>
+              <label className="block text-slate-400 mb-1.5 font-bold uppercase text-[10px]">
+                Commander Callsign
+              </label>
+              <input
+                type="text"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="Enter your callsign..."
+                className="w-full px-4 py-3 bg-[#050B0E] border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-400 mb-1.5 font-bold uppercase text-[10px] flex justify-between">
+                <span>Match Stake (Max 0.1 0G)</span>
+                <Coins className="w-3.5 h-3.5 text-emerald-400" />
+              </label>
+              <select
+                value={stakeAmountEth}
+                onChange={(e) => setStakeAmountEth(e.target.value)}
+                className="w-full px-4 py-3 bg-[#050B0E] border border-slate-800 rounded-xl text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500"
+              >
+                <option value="0.01">0.01 0G Tokens (Prize Pool: 0.02 0G)</option>
+                <option value="0.05">0.05 0G Tokens (Prize Pool: 0.10 0G)</option>
+                <option value="0.1">0.10 0G Tokens (Max Stake: 0.20 0G)</option>
+              </select>
+            </div>
 
             <button
-              onClick={() => setIsWaiting(false)}
-              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition border border-slate-700 cursor-pointer"
+              onClick={handleCreateMatch}
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 transition flex items-center justify-center space-x-2 cursor-pointer mt-2"
             >
-              CANCEL LOBBY
+              <Lock className="w-4 h-4" />
+              <span>CREATE & DEPOSIT {stakeAmountEth} 0G STAKE</span>
             </button>
           </div>
         </div>
-      ) : (
-        /* Lobby Controls */
-        <div className="grid md:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Create Match Form */}
-          <div className="md:col-span-6 bg-[#091015] border border-slate-800 p-6 rounded-3xl shadow-xl space-y-5">
+
+        {/* Right Column: Join Match by Code & Live Lobbies */}
+        <div className="md:col-span-6 space-y-6">
+          {/* Join by Code Card */}
+          <div className="bg-[#091015] border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
             <div className="flex items-center space-x-3 pb-3 border-b border-slate-800">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <Plus className="w-5 h-5" />
+              <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
+                <LogIn className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-white uppercase">HOST NEW STAKED MATCH</h3>
-                <p className="text-[11px] text-slate-400 font-sans">Deposit 0G stake into 0G Mainnet Escrow</p>
+                <h3 className="text-sm font-black text-white uppercase">JOIN VIA MATCH CODE</h3>
+                <p className="text-[11px] text-slate-400 font-sans">Enter 6-digit match code to enter escrow</p>
               </div>
             </div>
 
-            <div className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-400 mb-1.5 font-bold uppercase text-[10px]">
-                  Commander Callsign
-                </label>
-                <input
-                  type="text"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="Enter your callsign..."
-                  className="w-full px-4 py-3 bg-[#050B0E] border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1.5 font-bold uppercase text-[10px] flex justify-between">
-                  <span>Match Stake (Max 0.1 0G)</span>
-                  <Coins className="w-3.5 h-3.5 text-emerald-400" />
-                </label>
-                <select
-                  value={stakeAmountEth}
-                  onChange={(e) => setStakeAmountEth(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#050B0E] border border-slate-800 rounded-xl text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="0.01">0.01 0G Tokens (Prize Pool: 0.02 0G)</option>
-                  <option value="0.05">0.05 0G Tokens (Prize Pool: 0.10 0G)</option>
-                  <option value="0.1">0.10 0G Tokens (Max Stake: 0.20 0G)</option>
-                </select>
-              </div>
-
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                placeholder="e.g. 849201"
+                maxLength={6}
+                className="flex-1 px-4 py-3 bg-[#050B0E] border border-slate-800 rounded-xl text-emerald-400 font-mono font-bold tracking-widest text-center text-base focus:outline-none focus:border-emerald-500 uppercase"
+              />
               <button
-                onClick={handleCreateMatch}
-                className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 transition flex items-center justify-center space-x-2 cursor-pointer mt-2"
+                onClick={() => handleJoinMatch()}
+                className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer"
               >
-                <Lock className="w-4 h-4" />
-                <span>CREATE STAKED MATCH ({stakeAmountEth} 0G)</span>
+                JOIN
               </button>
             </div>
           </div>
 
-          {/* Right Column: Join Match by Code & Live Lobbies */}
-          <div className="md:col-span-6 space-y-6">
-            {/* Join by Code Card */}
-            <div className="bg-[#091015] border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
-              <div className="flex items-center space-x-3 pb-3 border-b border-slate-800">
-                <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
-                  <LogIn className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-white uppercase">JOIN VIA MATCH CODE</h3>
-                  <p className="text-[11px] text-slate-400 font-sans">Enter 6-digit match code to enter escrow</p>
-                </div>
-              </div>
-
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value)}
-                  placeholder="e.g. 849201"
-                  maxLength={6}
-                  className="flex-1 px-4 py-3 bg-[#050B0E] border border-slate-800 rounded-xl text-emerald-400 font-mono font-bold tracking-widest text-center text-base focus:outline-none focus:border-emerald-500 uppercase"
-                />
-                <button
-                  onClick={() => handleJoinMatch()}
-                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer"
-                >
-                  JOIN
-                </button>
-              </div>
+          {/* Active Lobbies Table */}
+          <div className="bg-[#091015] border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h4 className="text-xs font-black text-white uppercase flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-400" />
+                <span>OPEN STAKED LOBBIES</span>
+              </h4>
+              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-500/30">
+                {localLobbies.length} ACTIVE
+              </span>
             </div>
 
-            {/* Active Real-time Lobbies Table from Convex */}
-            <div className="bg-[#091015] border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <h4 className="text-xs font-black text-white uppercase flex items-center gap-2">
-                  <Users className="w-4 h-4 text-emerald-400" />
-                  <span>OPEN STAKED LOBBIES (CONVEX REALTIME)</span>
-                </h4>
-                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-500/30">
-                  {openLobbies.length} ACTIVE
-                </span>
-              </div>
-
-              {openLobbies.length === 0 ? (
-                <div className="text-center py-6 text-slate-500 text-xs font-sans">
-                  No open lobbies right now. Create a new staked match on the left!
-                </div>
-              ) : (
+            <ConvexErrorBoundary
+              fallback={
                 <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
-                  {openLobbies.map((lobby) => (
-                    <div
-                      key={lobby.matchId}
-                      className="p-3 bg-[#050B0E] border border-slate-800 rounded-xl flex items-center justify-between text-xs"
-                    >
-                      <div>
-                        <span className="font-bold text-white block">{lobby.hostName}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          Stake: <strong className="text-emerald-400">{lobby.stakeAmountEth} 0G</strong> • #{lobby.matchCode}
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={() => handleJoinMatch(lobby.matchCode, lobby.matchId)}
-                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[11px] rounded-lg transition shadow cursor-pointer"
-                      >
-                        JOIN & STAKE
-                      </button>
+                  {localLobbies.length === 0 ? (
+                    <div className="text-center py-6 text-slate-500 text-xs font-sans">
+                      No open lobbies right now. Create a new staked match on the left!
                     </div>
-                  ))}
+                  ) : (
+                    localLobbies.map((lobby) => (
+                      <div
+                        key={lobby.matchId}
+                        className="p-3 bg-[#050B0E] border border-slate-800 rounded-xl flex items-center justify-between text-xs font-mono"
+                      >
+                        <div>
+                          <span className="font-bold text-white block">{lobby.hostName}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            Stake: <strong className="text-emerald-400">{lobby.stakeAmountEth} 0G</strong> • #{lobby.matchCode}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => handleJoinMatch(lobby.matchCode, lobby.matchId)}
+                          className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[11px] rounded-lg transition shadow cursor-pointer"
+                        >
+                          JOIN & STAKE
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
-              )}
-            </div>
+              }
+            >
+              <RealtimeConvexLobbies onJoinMatch={handleJoinMatch} localLobbies={localLobbies} />
+            </ConvexErrorBoundary>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
