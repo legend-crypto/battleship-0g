@@ -22,3 +22,6 @@ typechain-types/
 .idea/
 .DS_Store
 Thumbs.db
+.agents
+.claude
+
