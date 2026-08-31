@@ -37,7 +37,7 @@ const RealtimeConvexLobbies: React.FC<{
     console.warn('Convex listOpenLobbies query warning:', e);
   }
 
-  const openLobbies: MatchSummary[] = convexLobbies
+  const openLobbies: MatchSummary[] = (convexLobbies && convexLobbies.length > 0)
     ? convexLobbies.map((m: any) => ({
         matchId: m._id,
         matchCode: m.matchIdBytes32 ? m.matchIdBytes32.slice(-6).toUpperCase() : '849201',
@@ -152,8 +152,8 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
     }
   }, [socket, onMatchReady, playerName]);
 
-  // Instant Staked Match Creation ➔ Directly opens Escrow Staking & Fleet Station!
-  const handleCreateMatch = async () => {
+  // Synchronous, Non-Blocking Staked Match Creation
+  const handleCreateMatch = () => {
     if (!playerName.trim()) {
       setErrorMsg('Please enter your captain callsign first.');
       return;
@@ -166,7 +166,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
 
     if (currentChainId !== ZERO_G_MAINNET.id && switchChain) {
       try {
-        await switchChain({ chainId: ZERO_G_MAINNET.id });
+        switchChain({ chainId: ZERO_G_MAINNET.id });
       } catch (e) {
         console.warn('Network switch warning:', e);
       }
@@ -199,18 +199,14 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
       return updated;
     });
 
-    // Try Convex mutation safely
-    try {
-      if (createLobbyMutation) {
-        await createLobbyMutation({
-          matchIdBytes32,
-          stakeAmountEth: stakeAmountEth || '0.1',
-          hostAddress: address,
-          hostToken: token
-        });
-      }
-    } catch (e) {
-      console.warn('Convex createLobby fallback:', e);
+    // Non-blocking Convex mutation in background
+    if (createLobbyMutation) {
+      createLobbyMutation({
+        matchIdBytes32,
+        stakeAmountEth: stakeAmountEth || '0.1',
+        hostAddress: address,
+        hostToken: token
+      }).catch((e: any) => console.warn('Convex createLobby non-blocking warning:', e));
     }
 
     if (socket && socket.connected) {
@@ -221,7 +217,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
       });
     }
 
-    // DIRECTLY ENTER MATCH STATION & STAKING PANEL!
+    // IMMEDIATELY ENTER MATCH STATION & STAKING PANEL (ZERO LATENCY!)
     onMatchReady({
       matchId: rawMatchId,
       matchCode: randomCode,
@@ -235,7 +231,8 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
     });
   };
 
-  const handleJoinMatch = async (codeToJoin?: string, matchBytes32Param?: string) => {
+  // Synchronous, Non-Blocking Join Match
+  const handleJoinMatch = (codeToJoin?: string, matchBytes32Param?: string) => {
     const code = (codeToJoin || joinCode).trim().toUpperCase();
     if (!playerName.trim()) {
       setErrorMsg('Please enter your captain callsign first.');
@@ -246,17 +243,14 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBackToMenu
     const matchIdBytes32 = matchBytes32Param || keccak256(encodePacked(['string', 'string', 'uint256'], ['JOINED_MATCH', code, BigInt(Date.now())]));
 
     if (address && joinLobbyMutation) {
-      try {
-        await joinLobbyMutation({
-          matchIdBytes32,
-          guestAddress: address,
-          guestToken: `token_guest_${Date.now()}`
-        });
-      } catch (e) {
-        console.warn('Convex joinLobby fallback:', e);
-      }
+      joinLobbyMutation({
+        matchIdBytes32,
+        guestAddress: address,
+        guestToken: `token_guest_${Date.now()}`
+      }).catch((e: any) => console.warn('Convex joinLobby non-blocking warning:', e));
     }
 
+    // IMMEDIATELY ENTER STAKING PANEL AS GUEST
     onMatchReady({
       matchId: `match_joined_${Date.now()}`,
       matchCode: code || '849201',

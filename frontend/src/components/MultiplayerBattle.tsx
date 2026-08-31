@@ -23,7 +23,7 @@ import { ShipPlacementPanel } from './ShipPlacementPanel';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { BATTLESHIP_STAKING_ADDRESS, BATTLESHIP_STAKING_ABI } from '../config/contract';
 import { ZERO_G_MAINNET } from '../config/wagmi';
-import { ArrowLeft, RefreshCw, Trophy, Flame, Shield, Coins, ExternalLink, CheckCircle2, Eye, BarChart3, Info, BookOpen, MessageSquare, Settings, Target, Copy, Check } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, Flame, Shield, Coins, ExternalLink, CheckCircle2, Eye, BarChart3, Info, BookOpen, MessageSquare, Settings, Target, Copy, Check, Play, Users, Sparkles } from 'lucide-react';
 
 interface MultiplayerBattleProps {
   matchData: {
@@ -183,8 +183,6 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
     setHasStaked(true);
     setStakeTxHash(txHash);
     addLog('PLAYER', `0G Stake deposited into 0G Mainnet Escrow! (TxHash: ${txHash.slice(0, 10)}...)`, 'info');
-
-    // Automatically transition host into placement mode
     setPhase('PLACEMENT');
   };
 
@@ -227,10 +225,12 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         board: myBoard
       });
     } else {
-      // Local battle transition
+      // Local battle transition vs Challenger / DeAI Node
+      const randomOppBoard = generateRandomBoard();
+      setOpponentBoard(randomOppBoard);
       setPhase('PLAYING');
       setCurrentTurn(matchData.playerId);
-      addLog('PLAYER', 'Fleet deployed! Match station active.', 'info');
+      addLog('PLAYER', 'Fleet deployed! Battle station active.', 'info');
     }
   };
 
@@ -244,6 +244,23 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         playerToken: matchData.playerToken,
         pos
       });
+    } else if (opponentBoard) {
+      // Offline / Challenger battle logic
+      const colLabel = String.fromCharCode(65 + pos.x);
+      const coordStr = `${colLabel}${pos.y + 1}`;
+
+      const isHit = opponentBoard.grid[pos.y][pos.x] === CellStatus.SHIP;
+      const newTracking = enemyOceanTracking.map((row) => [...row]);
+      newTracking[pos.y][pos.x] = isHit ? CellStatus.HIT : CellStatus.MISS;
+      setEnemyOceanTracking(newTracking);
+
+      setMyShots((prev) => prev + 1);
+      if (isHit) {
+        setMyHits((prev) => prev + 1);
+        addLog('PLAYER', `You fired at ${coordStr} — HIT`, 'hit');
+      } else {
+        addLog('PLAYER', `You fired at ${coordStr} — MISS`, 'miss');
+      }
     }
   };
 
@@ -285,9 +302,9 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
   const isWinner = winnerId ? winnerId === matchData.playerId : false;
 
   return (
-    <div className="flex flex-col justify-between min-h-[calc(100vh-80px)] w-full max-w-[1850px] mx-auto px-4 lg:px-8 py-4 space-y-5">
+    <div className="flex flex-col justify-between min-h-[calc(100vh-80px)] w-full max-w-[1850px] mx-auto px-4 lg:px-8 py-4 space-y-5 font-mono">
       {/* Header Bar */}
-      <div className="w-full flex items-center justify-between bg-[#091015] p-3.5 rounded-xl border border-slate-800 font-mono text-xs shadow-xl">
+      <div className="w-full flex items-center justify-between bg-[#091015] p-3.5 rounded-xl border border-slate-800 text-xs shadow-xl">
         <button
           onClick={onExit}
           className="flex items-center space-x-2 text-slate-400 hover:text-emerald-400 font-bold transition cursor-pointer"
@@ -297,19 +314,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         </button>
 
         <div className="flex items-center space-x-3">
-          {/* Share Match Code Badge in Header */}
-          <div className="flex items-center space-x-2 bg-[#050B0E] px-3 py-1.5 rounded-xl border border-emerald-500/40 text-emerald-400 font-mono text-xs font-bold shadow">
-            <span>MATCH CODE: #{matchData.matchCode}</span>
-            <button
-              onClick={handleCopyMatchCode}
-              className="p-1 hover:text-white transition cursor-pointer"
-              title="Copy Match Code"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-
-          <span className="font-mono text-xs text-emerald-400 bg-[#050B0E] px-3 py-1.5 rounded-xl border border-slate-800 font-bold flex items-center gap-1.5">
+          <span className="text-xs text-emerald-400 bg-[#050B0E] px-3 py-1.5 rounded-xl border border-slate-800 font-bold flex items-center gap-1.5">
             <Coins className="w-3.5 h-3.5 text-emerald-400" />
             STAKE: {matchData.stakeAmountEth} 0G
           </span>
@@ -355,7 +360,46 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
 
       {/* Main View Area */}
       {phase === 'STAKING' ? (
-        <div className="flex flex-col items-center justify-center py-8 w-full">
+        <div className="flex flex-col items-center justify-center py-6 w-full max-w-2xl mx-auto space-y-6">
+          {/* HERO CENTER CARD: MATCH CODE WITH ONE-CLICK COPY */}
+          <div className="w-full bg-[#091015] border-2 border-emerald-500/40 p-8 rounded-3xl shadow-2xl shadow-emerald-500/10 text-center space-y-5 relative overflow-hidden backdrop-blur-xl">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-xs font-bold uppercase tracking-widest">
+              <Users className="w-3.5 h-3.5" />
+              <span>STAKED MATCH CODE</span>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                SHARE THIS CODE WITH YOUR OPPONENT TO ENTER ESCROW
+              </p>
+              <div className="flex items-center justify-center gap-4">
+                <span className="font-mono text-4xl sm:text-5xl font-black text-emerald-400 tracking-[0.2em] bg-[#050B0E] px-8 py-4 rounded-2xl border border-emerald-500/50 shadow-inner drop-shadow-[0_0_25px_rgba(16,185,129,0.35)]">
+                  #{matchData.matchCode}
+                </span>
+                <button
+                  onClick={handleCopyMatchCode}
+                  className="px-6 py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-2xl transition shadow-lg shadow-emerald-500/20 cursor-pointer flex items-center justify-center"
+                  title="Copy Match Code"
+                >
+                  {copied ? (
+                    <span className="flex items-center gap-2 text-xs font-mono">
+                      <Check className="w-5 h-5 text-slate-950" />
+                      <span>COPIED!</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2 text-xs font-mono">
+                      <Copy className="w-5 h-5 text-slate-950" />
+                      <span>COPY CODE</span>
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 0G Escrow Staking Panel */}
           <StakingPanel
             matchIdBytes32={matchData.matchIdBytes32}
             stakeAmountEth={matchData.stakeAmountEth}
@@ -363,6 +407,15 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
             hasStaked={hasStaked}
             onStakeConfirmed={handleStakeConfirmed}
           />
+
+          {/* Proceed Action Button */}
+          <button
+            onClick={() => setPhase('PLACEMENT')}
+            className="w-full max-w-md py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-2xl text-xs uppercase tracking-wider shadow-xl shadow-emerald-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Play className="w-4 h-4 fill-current" />
+            <span>PROCEED TO FLEET PLACEMENT</span>
+          </button>
         </div>
       ) : phase === 'PLACEMENT' ? (
         <div className="grid lg:grid-cols-12 gap-6 w-full items-start">
@@ -398,7 +451,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
             />
 
             {isMyReady && (
-              <div className="w-full bg-[#091015] p-4 rounded-xl border border-emerald-500/40 text-center font-mono text-xs text-emerald-400 font-bold">
+              <div className="w-full bg-[#091015] p-4 rounded-xl border border-emerald-500/40 text-center text-xs text-emerald-400 font-bold">
                 ✓ FLEET LOCKED & READY FOR ENGAGEMENT
               </div>
             )}
