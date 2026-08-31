@@ -1,0 +1,26 @@
+{
+  "name": "0g-battleship",
+  "version": "1.0.0",
+  "private": true,
+  "description": "0G Battleship monorepo - Classic Battleship with local AI, real-time multiplayer, and 0G Chain staking",
+  "workspaces": [
+    "shared",
+    "contracts",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npx concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspace=shared && npm run test --workspace=contracts",
+    "test:engine": "npm run test --workspace=shared",
+    "test:contracts": "npm run test --workspace=contracts",
+    "lint": "echo 'Linting placeholder'",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5"
+  }
+}
