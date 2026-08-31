@@ -22,7 +22,7 @@ import {
 import { BoardGrid } from './BoardGrid';
 import { ShipPlacementPanel } from './ShipPlacementPanel';
 import { GameLog, LogEntry } from './GameLog';
-import { Trophy, ArrowLeft, RefreshCw, Bot, ShieldCheck, Flame } from 'lucide-react';
+import { Trophy, ArrowLeft, RefreshCw, Bot, Flame, BarChart3, Eye, Play } from 'lucide-react';
 
 interface LocalAIGameProps {
   onBackToMenu: () => void;
@@ -30,12 +30,13 @@ interface LocalAIGameProps {
 
 export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
   const [phase, setPhase] = useState<'PLACEMENT' | 'PLAYING' | 'FINISHED'>('PLACEMENT');
+  const [showStatsModal, setShowStatsModal] = useState(false);
   
   // Boards
   const [playerBoard, setPlayerBoard] = useState<BoardState>(createEmptyBoard());
   const [aiBoard, setAiBoard] = useState<BoardState>(createEmptyBoard());
   
-  // Tracking Grids (Publicly visible cell status)
+  // Tracking Grids
   const [aiOceanTracking, setAiOceanTracking] = useState<CellStatus[][]>(() =>
     Array.from({ length: BOARD_SIZE }, () => Array.from({ length: BOARD_SIZE }, () => CellStatus.EMPTY))
   );
@@ -70,7 +71,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     ]);
   };
 
-  // Select next unplaced ship automatically
   const selectNextAvailableShip = (board: BoardState) => {
     const remaining = FLEET_SHIPS.filter((s) => !board.ships.some((p) => p.type === s));
     setSelectedShipType(remaining.length > 0 ? remaining[0] : null);
@@ -104,10 +104,10 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     setAiBoard(randomAiBoard);
     setPhase('PLAYING');
     setCurrentTurn('PLAYER');
+    setShowStatsModal(false);
     addLog('PLAYER', 'Battle initiated! All tactical grids online.', 'info');
   };
 
-  // Player Fire Shot Handler
   const handleFireShot = (pos: Position) => {
     if (phase !== 'PLAYING' || currentTurn !== 'PLAYER') return;
     if (aiOceanTracking[pos.y][pos.x] !== CellStatus.EMPTY) return;
@@ -118,7 +118,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     const { updatedBoard, result } = processShot(aiBoard, pos);
     setAiBoard(updatedBoard);
 
-    // Update Player's Tracking Grid for AI's board
     const newTracking = aiOceanTracking.map((row) => [...row]);
     newTracking[pos.y][pos.x] = result.hit ? CellStatus.HIT : CellStatus.MISS;
     setAiOceanTracking(newTracking);
@@ -139,13 +138,13 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     if (result.gameOver) {
       setWinner('PLAYER');
       setPhase('FINISHED');
-      addLog('PLAYER', 'VICTORY! All enemy naval vessels destroyed!', 'sunk');
+      setShowStatsModal(true);
+      addLog('PLAYER', 'VICTORY! All enemy naval vessels destroyed! Opponent fleet revealed.', 'sunk');
     } else {
       setCurrentTurn('AI');
     }
   };
 
-  // AI Turn Logic Effect
   useEffect(() => {
     if (phase !== 'PLAYING' || currentTurn !== 'AI') return;
 
@@ -158,7 +157,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         const { updatedBoard, result } = processShot(playerBoard, pos);
         setPlayerBoard(updatedBoard);
 
-        // Update AI's Tracking Grid for Player's board
         const newTracking = playerOceanTracking.map((row) => [...row]);
         newTracking[pos.y][pos.x] = result.hit ? CellStatus.HIT : CellStatus.MISS;
         setPlayerOceanTracking(newTracking);
@@ -183,6 +181,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         if (result.gameOver) {
           setWinner('AI');
           setPhase('FINISHED');
+          setShowStatsModal(true);
           addLog('AI', 'DEFEAT! Your fleet has been completely destroyed.', 'sunk');
         } else {
           setCurrentTurn('PLAYER');
@@ -211,12 +210,16 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     setAiShots(0);
     setAiHits(0);
     setPhase('PLACEMENT');
+    setShowStatsModal(false);
   };
 
   const isValidHover =
     hoverPos && selectedShipType
       ? isValidPlacement(playerBoard, selectedShipType, hoverPos, orientation)
       : false;
+
+  const playerAccuracy = playerShots > 0 ? Math.round((playerHits / playerShots) * 100) : 0;
+  const aiAccuracy = aiShots > 0 ? Math.round((aiHits / aiShots) * 100) : 0;
 
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto space-y-6">
@@ -244,6 +247,27 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                   <span className="text-indigo-400">AI THINKING...</span>
                 </>
               )}
+            </div>
+          )}
+
+          {phase === 'FINISHED' && (
+            <div className="flex items-center space-x-3">
+              <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-wider uppercase flex items-center gap-2 ${
+                winner === 'PLAYER'
+                  ? 'bg-emerald-950 border border-emerald-500 text-emerald-400'
+                  : 'bg-red-950 border border-red-500 text-red-400'
+              }`}>
+                {winner === 'PLAYER' ? <Trophy className="w-4 h-4 text-amber-400" /> : <Flame className="w-4 h-4 text-red-400" />}
+                <span>WINNER: {winner === 'PLAYER' ? 'COMMANDER (YOU)' : 'TACTICAL AI'}</span>
+              </span>
+
+              <button
+                onClick={() => setShowStatsModal(true)}
+                className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-md shadow-indigo-600/30"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Accuracy Stats</span>
+              </button>
             </div>
           )}
         </div>
@@ -293,14 +317,22 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         </div>
       ) : (
         <div className="grid lg:grid-cols-3 gap-6 w-full items-start">
-          {/* Left Grid: Enemy Tracking Grid */}
+          {/* Left Grid: Enemy Tracking Radar (Reveals all AI ships when match ends!) */}
           <div className="flex justify-center">
             <BoardGrid
-              title="Targeting Radar (Enemy Ocean)"
-              subtitle={currentTurn === 'PLAYER' ? 'Click to fire missile' : 'Awaiting AI move'}
-              grid={aiOceanTracking}
+              title={phase === 'FINISHED' ? 'Enemy Radar (All Ships Revealed)' : 'Targeting Radar (Enemy Ocean)'}
+              subtitle={
+                phase === 'FINISHED'
+                  ? 'Gold cells reveal all un-hit AI ship locations'
+                  : currentTurn === 'PLAYER'
+                  ? 'Click to fire missile'
+                  : 'Awaiting AI move'
+              }
+              grid={phase === 'FINISHED' ? aiBoard.grid : aiOceanTracking}
+              ships={aiBoard.ships}
               isEnemyView={true}
-              interactive={currentTurn === 'PLAYER'}
+              revealShips={phase === 'FINISHED'}
+              interactive={currentTurn === 'PLAYER' && phase === 'PLAYING'}
               onCellClick={handleFireShot}
             />
           </div>
@@ -330,10 +362,18 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         </div>
       )}
 
-      {/* Game Over Modal */}
-      {phase === 'FINISHED' && (
+      {/* Accuracy Stats & Winner Declaration Modal */}
+      {showStatsModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl shadow-cyan-950/50">
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl shadow-cyan-950/50 relative">
+            <button
+              onClick={() => setShowStatsModal(false)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-white p-1 rounded-lg transition"
+              title="Inspect Revealed Battlefield"
+            >
+              <Eye className="w-5 h-5 text-cyan-400" />
+            </button>
+
             <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto mb-4">
               {winner === 'PLAYER' ? (
                 <Trophy className="w-10 h-10 text-amber-400 animate-bounce" />
@@ -342,42 +382,69 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
               )}
             </div>
 
-            <h3 className="text-2xl font-black mb-2 text-white">
-              {winner === 'PLAYER' ? 'NAVAL VICTORY!' : 'FLEET DESTROYED!'}
-            </h3>
-            <p className="text-slate-400 text-sm mb-6">
+            {/* Prominent Winner Declaration */}
+            <div className="mb-4">
+              <span className={`inline-block px-4 py-1 rounded-full text-xs font-black tracking-widest uppercase mb-2 ${
+                winner === 'PLAYER'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : 'bg-red-500/20 text-red-300 border border-red-500/40'
+              }`}>
+                MATCH WINNER: {winner === 'PLAYER' ? 'COMMANDER (YOU)' : 'TACTICAL AI'}
+              </span>
+
+              <h3 className="text-2xl font-black text-white">
+                {winner === 'PLAYER' ? 'NAVAL VICTORY!' : 'FLEET DESTROYED!'}
+              </h3>
+            </div>
+
+            <p className="text-slate-400 text-xs mb-6">
               {winner === 'PLAYER'
-                ? 'You successfully sunk the entire enemy fleet with tactical precision!'
-                : 'The AI tactical system overwhelmed your naval defenses.'}
+                ? 'You successfully destroyed all enemy naval vessels! All opponent ship positions are now revealed on the radar.'
+                : 'The AI tactical system overwhelmed your naval defenses. All AI ship positions are now revealed on the radar.'}
             </p>
 
-            <div className="grid grid-cols-2 gap-3 mb-6 font-mono text-xs text-left bg-slate-950 p-4 rounded-xl border border-slate-800">
-              <div>
-                <div className="text-slate-500">Your Accuracy</div>
-                <div className="text-cyan-300 font-bold text-sm">
-                  {playerShots > 0 ? Math.round((playerHits / playerShots) * 100) : 0}% ({playerHits}/{playerShots})
-                </div>
+            {/* Accuracy Performance Breakdown Card */}
+            <div className="space-y-3 mb-6 font-mono text-xs text-left bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-slate-400 font-sans font-semibold">Battle Performance</span>
+                <span className="text-cyan-400 font-bold">ACCURACY REPORT</span>
               </div>
-              <div>
-                <div className="text-slate-500">AI Accuracy</div>
-                <div className="text-indigo-300 font-bold text-sm">
-                  {aiShots > 0 ? Math.round((aiHits / aiShots) * 100) : 0}% ({aiHits}/{aiShots})
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${winner === 'PLAYER' ? 'bg-amber-400' : 'bg-cyan-400'}`}></div>
+                  <span className="text-slate-300 font-sans">Commander (You):</span>
                 </div>
+                <span className="text-cyan-300 font-bold text-sm">
+                  {playerAccuracy}% <span className="text-slate-500 text-xs">({playerHits}/{playerShots} shots)</span>
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${winner === 'AI' ? 'bg-amber-400' : 'bg-red-400'}`}></div>
+                  <span className="text-slate-300 font-sans">Tactical AI:</span>
+                </div>
+                <span className="text-indigo-300 font-bold text-sm">
+                  {aiAccuracy}% <span className="text-slate-500 text-xs">({aiHits}/{aiShots} shots)</span>
+                </span>
               </div>
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={handleRestart}
-                className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition"
+                onClick={() => setShowStatsModal(false)}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition border border-slate-700 flex items-center justify-center gap-1.5"
               >
-                Play Again
+                <Eye className="w-4 h-4 text-cyan-400" />
+                <span>Inspect Grid</span>
               </button>
               <button
-                onClick={onBackToMenu}
-                className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition border border-slate-700"
+                onClick={handleRestart}
+                className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5"
               >
-                Menu
+                <Play className="w-4 h-4" />
+                <span>Play Again</span>
               </button>
             </div>
           </div>

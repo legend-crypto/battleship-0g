@@ -1,6 +1,6 @@
 import React from 'react';
 import { BOARD_SIZE, CellStatus, Position, ShipPlacement } from '@battleship/shared';
-import { Target, Flame, Waves } from 'lucide-react';
+import { Target, Flame, Waves, ShieldAlert } from 'lucide-react';
 
 interface BoardGridProps {
   title: string;
@@ -8,6 +8,7 @@ interface BoardGridProps {
   grid: CellStatus[][];
   ships?: ShipPlacement[];
   isEnemyView?: boolean;
+  revealShips?: boolean;
   interactive?: boolean;
   onCellClick?: (pos: Position) => void;
   hoverPos?: Position | null;
@@ -23,6 +24,7 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
   grid,
   ships = [],
   isEnemyView = false,
+  revealShips = false,
   interactive = false,
   onCellClick,
   hoverPos,
@@ -87,13 +89,24 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
               let cellStyle = 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700';
 
               if (isEnemyView) {
-                if (isHit) cellStyle = 'bg-red-950/90 border-red-500 text-red-400 animate-pulse shadow-inner shadow-red-500/50';
-                else if (isMiss) cellStyle = 'bg-cyan-950/50 border-cyan-800/50 text-cyan-400/60';
-                else if (interactive) cellStyle = 'bg-slate-950 hover:bg-cyan-950/40 border-slate-800 hover:border-cyan-500/60 cursor-pointer';
+                if (isHit) {
+                  cellStyle = 'bg-red-950/90 border-red-500 text-red-400 animate-pulse shadow-inner shadow-red-500/50';
+                } else if (isMiss) {
+                  cellStyle = 'bg-cyan-950/50 border-cyan-800/50 text-cyan-400/60';
+                } else if (revealShips && isShipCell) {
+                  // Revealed opponent ship at end of match
+                  cellStyle = 'bg-amber-950/80 border-amber-500/80 text-amber-300 shadow-md shadow-amber-500/20 ring-1 ring-amber-500/40';
+                } else if (interactive) {
+                  cellStyle = 'bg-slate-950 hover:bg-cyan-950/40 border-slate-800 hover:border-cyan-500/60 cursor-pointer';
+                }
               } else {
-                if (isHit) cellStyle = 'bg-red-950/90 border-red-500 text-red-400 animate-pulse';
-                else if (isMiss) cellStyle = 'bg-cyan-950/50 border-cyan-800/50 text-cyan-400/60';
-                else if (isShipCell) cellStyle = 'bg-cyan-950 border-cyan-500/80 text-cyan-300 shadow-md shadow-cyan-500/20';
+                if (isHit) {
+                  cellStyle = 'bg-red-950/90 border-red-500 text-red-400 animate-pulse';
+                } else if (isMiss) {
+                  cellStyle = 'bg-cyan-950/50 border-cyan-800/50 text-cyan-400/60';
+                } else if (isShipCell) {
+                  cellStyle = 'bg-cyan-950 border-cyan-500/80 text-cyan-300 shadow-md shadow-cyan-500/20';
+                }
               }
 
               if (isHovered) {
@@ -113,6 +126,15 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
                 >
                   {isHit && <Flame className="w-5 h-5 text-red-500 animate-bounce" />}
                   {isMiss && <div className="w-2.5 h-2.5 rounded-full bg-cyan-400/70"></div>}
+                  
+                  {/* Revealed opponent ship icon at match end */}
+                  {isEnemyView && revealShips && isShipCell && !isHit && (
+                    <div className="w-3 h-3 rounded-sm bg-amber-400 shadow-sm shadow-amber-300 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-950"></div>
+                    </div>
+                  )}
+
+                  {/* Player own ship icon */}
                   {!isEnemyView && isShipCell && !isHit && (
                     <div className="w-3 h-3 rounded-sm bg-cyan-400 shadow-sm shadow-cyan-300"></div>
                   )}

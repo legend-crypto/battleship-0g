@@ -23,7 +23,7 @@ import { GameLog, LogEntry } from './GameLog';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { BATTLESHIP_STAKING_ADDRESS, BATTLESHIP_STAKING_ABI } from '../config/contract';
 import { ZERO_G_GALILEO_TESTNET } from '../config/wagmi';
-import { ArrowLeft, RefreshCw, Trophy, Flame, Shield, Coins, ExternalLink, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, Flame, Shield, Coins, ExternalLink, Clock, AlertTriangle, CheckCircle2, Eye, BarChart3 } from 'lucide-react';
 
 interface MultiplayerBattleProps {
   matchData: {
@@ -43,6 +43,7 @@ interface MultiplayerBattleProps {
 export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData, onExit }) => {
   const { address } = useAccount();
   const [phase, setPhase] = useState<'STAKING' | 'PLACEMENT' | 'PLAYING' | 'FINISHED'>('STAKING');
+  const [showStatsModal, setShowStatsModal] = useState(false);
 
   // Staking state
   const [hasStaked, setHasStaked] = useState(false);
@@ -100,7 +101,6 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
     localStorage.setItem(`token_${matchData.matchId}`, matchData.playerToken);
     localStorage.setItem(`pid_${matchData.matchId}`, matchData.playerId);
 
-    // Register wallet address with backend session
     if (address) {
       socket.emit(SocketEvent.REGISTER_WALLET, {
         matchId: matchData.matchId,
@@ -195,8 +195,10 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
       const oppBoard = matchData.role === 'host' ? data.player2Board : data.player1Board;
       setOpponentBoard(oppBoard);
 
+      setShowStatsModal(true);
+
       const didIWin = data.winnerId === matchData.playerId;
-      addLog('PLAYER', didIWin ? 'VICTORY! All enemy ships destroyed! Claim your stake payout below.' : 'DEFEAT! Your fleet was sunk.', 'sunk');
+      addLog('PLAYER', didIWin ? 'VICTORY! All enemy ships destroyed! Opponent fleet revealed.' : 'DEFEAT! Your fleet was sunk.', 'sunk');
     });
 
     return () => {
@@ -290,6 +292,8 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
       : false;
 
   const isWinner = winnerId === matchData.playerId;
+  const myAccuracy = myShots > 0 ? Math.round((myHits / myShots) * 100) : 0;
+  const oppAccuracy = oppShots > 0 ? Math.round((oppHits / oppShots) * 100) : 0;
 
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto space-y-6">
@@ -322,6 +326,27 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
                   <span className="text-amber-400">OPPONENT'S TURN...</span>
                 </>
               )}
+            </div>
+          )}
+
+          {phase === 'FINISHED' && (
+            <div className="flex items-center space-x-3">
+              <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-wider uppercase flex items-center gap-2 ${
+                isWinner
+                  ? 'bg-emerald-950 border border-emerald-500 text-emerald-400'
+                  : 'bg-red-950 border border-red-500 text-red-400'
+              }`}>
+                {isWinner ? <Trophy className="w-4 h-4 text-amber-400" /> : <Flame className="w-4 h-4 text-red-400" />}
+                <span>WINNER: {isWinner ? 'YOU (VICTORY!)' : 'OPPONENT'}</span>
+              </span>
+
+              <button
+                onClick={() => setShowStatsModal(true)}
+                className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-md shadow-indigo-600/30"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Accuracy & Claim</span>
+              </button>
             </div>
           )}
         </div>
@@ -381,14 +406,22 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         </div>
       ) : (
         <div className="grid lg:grid-cols-3 gap-6 w-full items-start">
-          {/* Enemy Ocean Radar */}
+          {/* Enemy Ocean Radar (Reveals all opponent ships when match ends!) */}
           <div className="flex justify-center">
             <BoardGrid
-              title="Enemy Ocean Radar"
-              subtitle={isMyTurn ? 'Fire missile target' : 'Awaiting opponent move'}
-              grid={enemyOceanTracking}
+              title={phase === 'FINISHED' ? 'Enemy Radar (All Ships Revealed)' : 'Enemy Ocean Radar'}
+              subtitle={
+                phase === 'FINISHED'
+                  ? 'Gold cells reveal all opponent ship locations'
+                  : isMyTurn
+                  ? 'Click to fire missile'
+                  : 'Awaiting opponent move'
+              }
+              grid={phase === 'FINISHED' && opponentBoard ? opponentBoard.grid : enemyOceanTracking}
+              ships={opponentBoard?.ships || []}
               isEnemyView={true}
-              interactive={isMyTurn}
+              revealShips={phase === 'FINISHED'}
+              interactive={isMyTurn && phase === 'PLAYING'}
               onCellClick={handleFireShot}
             />
           </div>
@@ -398,7 +431,7 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
             <BoardGrid
               title="Your Ocean Grid"
               subtitle="Defend your position"
-              grid={phase === 'FINISHED' && opponentBoard ? opponentBoard.grid : myBoard.grid}
+              grid={myBoard.grid}
               ships={myBoard.ships}
               isEnemyView={false}
               interactive={false}
@@ -418,10 +451,18 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         </div>
       )}
 
-      {/* Game Over Modal with Winner Payout Claim */}
-      {phase === 'FINISHED' && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl shadow-indigo-950/50">
+      {/* Accuracy Stats & Winner Declaration Modal */}
+      {showStatsModal && phase === 'FINISHED' && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl shadow-indigo-950/50 relative">
+            <button
+              onClick={() => setShowStatsModal(false)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-white p-1 rounded-lg transition"
+              title="Inspect Revealed Battlefield"
+            >
+              <Eye className="w-5 h-5 text-cyan-400" />
+            </button>
+
             <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-4">
               {isWinner ? (
                 <Trophy className="w-10 h-10 text-amber-400 animate-bounce" />
@@ -430,14 +471,54 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
               )}
             </div>
 
-            <h3 className="text-2xl font-black mb-2 text-white">
-              {isWinner ? 'MULTIPLAYER VICTORY!' : 'MATCH DEFEAT!'}
-            </h3>
-            <p className="text-slate-400 text-sm mb-6">
+            {/* Prominent Winner Declaration */}
+            <div className="mb-4">
+              <span className={`inline-block px-4 py-1 rounded-full text-xs font-black tracking-widest uppercase mb-2 ${
+                isWinner
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : 'bg-red-500/20 text-red-300 border border-red-500/40'
+              }`}>
+                MATCH WINNER: {isWinner ? 'YOU (VICTORY!)' : 'OPPONENT'}
+              </span>
+
+              <h3 className="text-2xl font-black text-white">
+                {isWinner ? 'MULTIPLAYER VICTORY!' : 'MATCH DEFEAT!'}
+              </h3>
+            </div>
+
+            <p className="text-slate-400 text-xs mb-6">
               {isWinner
                 ? `You won the battle! Claim the pooled 0G token escrow stake of ${totalPayoutEth} 0G.`
                 : 'Your opponent succeeded in sinking all of your fleet vessels.'}
             </p>
+
+            {/* Accuracy Performance Breakdown Card */}
+            <div className="space-y-3 mb-6 font-mono text-xs text-left bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-slate-400 font-sans font-semibold">Multiplayer Stats</span>
+                <span className="text-cyan-400 font-bold">ACCURACY REPORT</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${isWinner ? 'bg-amber-400' : 'bg-cyan-400'}`}></div>
+                  <span className="text-slate-300 font-sans">Your Accuracy:</span>
+                </div>
+                <span className="text-cyan-300 font-bold text-sm">
+                  {myAccuracy}% <span className="text-slate-500 text-xs">({myHits}/{myShots} shots)</span>
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${!isWinner ? 'bg-amber-400' : 'bg-red-400'}`}></div>
+                  <span className="text-slate-300 font-sans">Opponent Accuracy:</span>
+                </div>
+                <span className="text-indigo-300 font-bold text-sm">
+                  {oppAccuracy}% <span className="text-slate-500 text-xs">({oppHits}/{oppShots} shots)</span>
+                </span>
+              </div>
+            </div>
 
             {/* Winner Payout Claim Box */}
             {isWinner && payoutSignature && (
@@ -482,12 +563,21 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
               </div>
             )}
 
-            <button
-              onClick={onExit}
-              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition border border-slate-700"
-            >
-              Return to Lobby
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowStatsModal(false)}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition border border-slate-700 flex items-center justify-center gap-1.5"
+              >
+                <Eye className="w-4 h-4 text-cyan-400" />
+                <span>Inspect Grid</span>
+              </button>
+              <button
+                onClick={onExit}
+                className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition"
+              >
+                Return to Lobby
+              </button>
+            </div>
           </div>
         </div>
       )}
