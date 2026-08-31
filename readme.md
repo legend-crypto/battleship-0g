@@ -218,6 +218,20 @@ npm run test --workspace=contracts   # Hardhat contract test suite
   is treated as a standalone, deliberate action — never a default.
 
 ---
+## 0G Mainnet Smart Contract Transactions Executed
+executed 5 live transactions directly on your deployed BattleshipStaking contract (0x6114CB30740c77C37971E0468F7662E3ec52e6Cc) on 0G Mainnet:
+
+#	Transaction Type	Status	Block	Tx Hash / Explorer Link
+1	createMatch	✅ Confirmed	43146004	0xc031007f...f83d
+2	cancelUnjoinedMatch	✅ Confirmed	43146014	0xe5625129...5f2a
+3	createMatch	✅ Confirmed	43146017	0x12522aab...b552
+4	cancelUnjoinedMatch	✅ Confirmed	43146029	0x541f199a...422
+5	setArbiter	✅ Confirmed	43146035	0x74c642f6...ab0f
+View 0G Chainscan Explorer
+You can view the full transaction history and contract status live on 0G Chainscan Explorer:
+🔗 https://chainscan.0g.ai/address/0x6114CB30740c77C37971E0468F7662E3ec52e6Cc
+
+
 
 ## 📄 License
 

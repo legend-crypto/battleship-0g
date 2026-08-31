@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { WalletConnect } from './WalletConnect';
-import { ChevronDown, Menu, X, Home } from 'lucide-react';
+import { ChevronDown, Menu, X, Home, FileText } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: 'PLAY' | 'MATCHES' | 'LEADERBOARD' | 'ABOUT';
-  onSelectTab: (tab: 'PLAY' | 'MATCHES' | 'LEADERBOARD' | 'ABOUT') => void;
+  activeTab: 'PLAY' | 'MATCHES' | 'LEADERBOARD' | 'WHITEPAPER' | 'ABOUT';
+  onSelectTab: (tab: 'PLAY' | 'MATCHES' | 'LEADERBOARD' | 'WHITEPAPER' | 'ABOUT') => void;
   onGoHome?: () => void;
   isDarkTheme?: boolean;
 }
@@ -20,7 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, onGoHome
     }
   };
 
-  const handleNavClick = (tab: 'PLAY' | 'MATCHES' | 'LEADERBOARD' | 'ABOUT') => {
+  const handleNavClick = (tab: 'PLAY' | 'MATCHES' | 'LEADERBOARD' | 'WHITEPAPER' | 'ABOUT') => {
     if (tab === 'PLAY' && onGoHome) {
       onGoHome();
     } else {
@@ -92,6 +92,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, onGoHome
         </button>
 
         <button
+          onClick={() => handleNavClick('WHITEPAPER')}
+          className={`transition-colors cursor-pointer py-1 flex items-center gap-1 ${
+            activeTab === 'WHITEPAPER'
+              ? 'text-emerald-600 border-b-2 border-emerald-600 pb-0.5'
+              : isDarkTheme ? 'text-slate-400 hover:text-slate-200' : 'text-slate-700 hover:text-slate-950'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>WHITEPAPER</span>
+        </button>
+
+        <button
           onClick={() => handleNavClick('ABOUT')}
           className={`transition-colors cursor-pointer py-1 ${
             activeTab === 'ABOUT'
@@ -150,6 +162,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, onGoHome
             className="block w-full text-left py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-900"
           >
             LEADERBOARD
+          </button>
+          <button
+            onClick={() => handleNavClick('WHITEPAPER')}
+            className="block w-full text-left py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-900"
+          >
+            WHITEPAPER
           </button>
           <button
             onClick={() => handleNavClick('ABOUT')}

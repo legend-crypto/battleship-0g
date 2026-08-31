@@ -23,22 +23,48 @@ import { BoardGrid } from './BoardGrid';
 import { FleetPanel } from './FleetPanel';
 import { MatchInfoPanel } from './MatchInfoPanel';
 import { ShipPlacementPanel } from './ShipPlacementPanel';
-import { Trophy, ArrowLeft, RefreshCw, Bot, Flame, BarChart3, Eye, Play, BookOpen, MessageSquare, Settings, Info, Target } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { StakingPanel } from './StakingPanel';
+import { Trophy, ArrowLeft, RefreshCw, Bot, Flame, BarChart3, Eye, Play, BookOpen, MessageSquare, Settings, Info, Target, Coins, Shield, Sparkles, ExternalLink, CheckCircle2, Lock, Swords, Loader2 } from 'lucide-react';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { BATTLESHIP_STAKING_ADDRESS, BATTLESHIP_STAKING_ABI } from '../config/contract';
+import { ZERO_G_MAINNET } from '../config/wagmi';
+import { privateKeyToAccount } from 'viem/accounts';
+import { createWalletClient, http, keccak256, encodePacked, parseEther } from 'viem';
 
 interface LocalAIGameProps {
   onBackToMenu: () => void;
 }
 
+type AIMode = 'FREE' | 'STAKED';
+
+// Trusted Arbiter Key matching 0G Mainnet contract arbiter (0xb5aDc622a510f66E467e603377d62da5667c1f20)
+const ARBITER_KEY = '0xfd9b76f4e98112193ac346bb83d9a3160ae3e731d04273302d20c6a6339ada0f' as `0x${string}`;
+
 export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
-  const { address } = useAccount();
-  const [phase, setPhase] = useState<'PLACEMENT' | 'PLAYING' | 'FINISHED'>('PLACEMENT');
+  const { address, isConnected } = useAccount();
+
+  // Mode Selection State
+  const [aiMode, setAiMode] = useState<AIMode | null>(null);
+  const [stakeAmountEth, setStakeAmountEth] = useState<string>('0.1');
+
+  // Staking & Match State
+  const [matchIdBytes32, setMatchIdBytes32] = useState<string>('');
+  const [hasStaked, setHasStaked] = useState(false);
+  const [stakeTxHash, setStakeTxHash] = useState<string | undefined>();
+  const [isAiJoiningOnChain, setIsAiJoiningOnChain] = useState(false);
+
+  // Winner Payout Claim State
+  const [payoutSignature, setPayoutSignature] = useState<string | undefined>();
+  const [payoutTxHash, setPayoutTxHash] = useState<`0x${string}` | undefined>();
+
+  // Game Phases
+  const [phase, setPhase] = useState<'MODE_SELECT' | 'STAKING' | 'PLACEMENT' | 'PLAYING' | 'FINISHED'>('MODE_SELECT');
   const [showStatsModal, setShowStatsModal] = useState(false);
-  
+
   // Boards
   const [playerBoard, setPlayerBoard] = useState<BoardState>(createEmptyBoard());
   const [aiBoard, setAiBoard] = useState<BoardState>(createEmptyBoard());
-  
+
   // Tracking Grids
   const [aiOceanTracking, setAiOceanTracking] = useState<CellStatus[][]>(() =>
     Array.from({ length: BOARD_SIZE }, () => Array.from({ length: BOARD_SIZE }, () => CellStatus.EMPTY))
@@ -64,6 +90,11 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
   const [aiShots, setAiShots] = useState(0);
   const [aiHits, setAiHits] = useState(0);
 
+  const { writeContractAsync, isPending: isClaimPending } = useWriteContract();
+  const { isLoading: isClaimMining, isSuccess: isClaimSuccess } = useWaitForTransactionReceipt({
+    hash: payoutTxHash
+  });
+
   const placedShipTypes = playerBoard.ships.map((s) => s.type);
 
   const addLog = (sender: 'PLAYER' | 'AI', message: string, type: 'hit' | 'miss' | 'sunk' | 'info') => {
@@ -72,6 +103,61 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
       { id: `${Date.now()}-${Math.random()}`, sender, message, timestamp, type },
       ...prev
     ]);
+  };
+
+  const handleSelectFreeMode = () => {
+    setAiMode('FREE');
+    setPhase('PLACEMENT');
+    addLog('PLAYER', 'Practice mode initiated. Deploy your fleet.', 'info');
+  };
+
+  const handleSelectStakedMode = () => {
+    if (!isConnected || !address) {
+      alert('Please connect your Web3 wallet in the top header to play Staked AI Battle.');
+      return;
+    }
+    const randomMatchId = keccak256(encodePacked(['string', 'address', 'uint256'], ['AI_MATCH', address, BigInt(Date.now())]));
+    setMatchIdBytes32(randomMatchId);
+    setAiMode('STAKED');
+    setPhase('STAKING');
+  };
+
+  // Called when Player 1 deposits stake on-chain
+  const handleStakeConfirmed = async (txHash: string) => {
+    setHasStaked(true);
+    setStakeTxHash(txHash);
+
+    // AI/Arbiter matching stake deposit to activate match (MatchStatus.Active) and fund 2x payout pool
+    if (aiMode === 'STAKED' && matchIdBytes32) {
+      try {
+        setIsAiJoiningOnChain(true);
+        addLog('AI', 'Arbiter matches 0G stake on 0G Mainnet to activate match pool...', 'info');
+
+        const arbiterAccount = privateKeyToAccount(ARBITER_KEY);
+        const walletClient = createWalletClient({
+          account: arbiterAccount,
+          chain: ZERO_G_MAINNET as any,
+          transport: http('https://evmrpc.0g.ai')
+        });
+
+        const joinHash = await walletClient.writeContract({
+          address: BATTLESHIP_STAKING_ADDRESS,
+          abi: BATTLESHIP_STAKING_ABI,
+          functionName: 'joinMatch',
+          args: [matchIdBytes32 as `0x${string}`],
+          value: parseEther(stakeAmountEth)
+        });
+
+        console.log('AI joinMatch confirmed on-chain:', joinHash);
+        addLog('PLAYER', `Match activated on-chain! Total Prize Pool: ${(Number(stakeAmountEth) * 2).toFixed(2)} 0G`, 'info');
+      } catch (err) {
+        console.error('AI on-chain join error:', err);
+      } finally {
+        setIsAiJoiningOnChain(false);
+      }
+    }
+
+    setPhase('PLACEMENT');
   };
 
   const selectNextAvailableShip = (board: BoardState) => {
@@ -111,7 +197,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     addLog('PLAYER', 'Battle initiated! All tactical grids online.', 'info');
   };
 
-  const handleFireShot = (pos: Position) => {
+  const handleFireShot = async (pos: Position) => {
     if (phase !== 'PLAYING' || currentTurn !== 'PLAYER') return;
     if (aiOceanTracking[pos.y][pos.x] !== CellStatus.EMPTY) return;
 
@@ -143,6 +229,26 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
       setPhase('FINISHED');
       setShowStatsModal(true);
       addLog('PLAYER', 'VICTORY! All enemy naval vessels destroyed!', 'sunk');
+
+      // Generate off-chain ECDSA attestation signature for 0G Mainnet stake claim
+      if (aiMode === 'STAKED' && address) {
+        try {
+          const totalPayoutWei = parseEther(stakeAmountEth) * 2n;
+          const messageHash = keccak256(
+            encodePacked(
+              ['string', 'bytes32', 'address', 'uint256'],
+              ['WINNER_PAYOUT', matchIdBytes32 as `0x${string}`, address as `0x${string}`, totalPayoutWei]
+            )
+          );
+          const arbiterAccount = privateKeyToAccount(ARBITER_KEY);
+          const sig = await arbiterAccount.signMessage({
+            message: { raw: messageHash }
+          });
+          setPayoutSignature(sig);
+        } catch (err) {
+          console.error('Attestation signature error:', err);
+        }
+      }
     } else {
       setCurrentTurn('AI');
     }
@@ -198,6 +304,21 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     return () => clearTimeout(aiTimeout);
   }, [phase, currentTurn, playerBoard, playerOceanTracking, aiState]);
 
+  const handleClaimWinnerPayout = async () => {
+    if (!payoutSignature || !matchIdBytes32) return;
+    try {
+      const hash = await writeContractAsync({
+        address: BATTLESHIP_STAKING_ADDRESS,
+        abi: BATTLESHIP_STAKING_ABI,
+        functionName: 'claimWinnerPayout',
+        args: [matchIdBytes32 as `0x${string}`, payoutSignature as `0x${string}`]
+      });
+      setPayoutTxHash(hash);
+    } catch (err: any) {
+      console.error('Claim Error:', err);
+    }
+  };
+
   const handleRestart = () => {
     setPlayerBoard(createEmptyBoard());
     setAiBoard(createEmptyBoard());
@@ -212,7 +333,10 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     setPlayerHits(0);
     setAiShots(0);
     setAiHits(0);
-    setPhase('PLACEMENT');
+    setHasStaked(false);
+    setPayoutSignature(undefined);
+    setPayoutTxHash(undefined);
+    setPhase('MODE_SELECT');
     setShowStatsModal(false);
   };
 
@@ -234,6 +358,8 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
   const playerShipsAlive = FLEET_SHIPS.length - playerBoard.ships.filter((s) => s.hits >= s.size).length;
   const aiShipsAlive = FLEET_SHIPS.length - aiBoard.ships.filter((s) => s.hits >= s.size).length;
 
+  const totalPayoutEth = (Number(stakeAmountEth) * 2).toFixed(2);
+
   return (
     <div className="flex flex-col justify-between min-h-[calc(100vh-80px)] w-full max-w-[1850px] mx-auto px-4 lg:px-8 py-4 space-y-5">
       {/* Top Header Navigation Bar */}
@@ -247,6 +373,13 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         </button>
 
         <div className="flex items-center space-x-3">
+          {aiMode === 'STAKED' && (
+            <span className="font-mono text-xs text-emerald-400 bg-[#050B0E] px-3 py-1 rounded-lg border border-slate-800 font-bold flex items-center gap-1.5">
+              <Coins className="w-3.5 h-3.5 text-emerald-400" />
+              STAKE: {stakeAmountEth} 0G
+            </span>
+          )}
+
           {phase === 'PLAYING' && (
             <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-[#050B0E] border border-slate-800 text-[11px] font-bold">
               {currentTurn === 'PLAYER' ? (
@@ -290,12 +423,114 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
           className="flex items-center space-x-2 text-slate-300 hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 transition cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          <span>RESTART MATCH</span>
+          <span>CHANGE MODE / RESTART</span>
         </button>
       </div>
 
-      {/* Main View Area */}
-      {phase === 'PLACEMENT' ? (
+      {/* ---------------- MODE SELECTION SCREEN ---------------- */}
+      {phase === 'MODE_SELECT' ? (
+        <div className="flex flex-col items-center justify-center py-8 w-full max-w-4xl mx-auto space-y-6 font-mono">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-black text-emerald-400 tracking-[0.25em] uppercase">SELECT AI ENGAGEMENT MODE</span>
+            <h2 className="text-3xl font-black text-white">PLAY VS TACTICAL AI</h2>
+            <p className="text-xs text-slate-400 max-w-lg font-sans">
+              Choose free offline practice mode or stake 0G tokens to earn real rewards on 0G Mainnet.
+            </p>
+          </div>
+
+          {/* User Requested Prize Pool Note Banner */}
+          <div className="w-full p-4 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl flex items-start gap-3 shadow-lg">
+            <Sparkles className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-emerald-300 font-sans leading-relaxed">
+              <strong className="font-mono text-emerald-400 font-bold block uppercase mb-0.5">PRIZE POOL NOTICE:</strong>
+              The prize pool will be increased after our upcoming funding round! This is a test run, but you can still defeat the AI and earn real 0G tokens on-chain!
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 w-full items-stretch">
+            {/* MODE 1: FREE PRACTICE */}
+            <div className="bg-[#091015] border border-slate-800 p-6 rounded-2xl shadow-2xl flex flex-col justify-between space-y-6 hover:border-slate-700 transition">
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
+                  <Bot className="w-6 h-6 text-slate-300" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">PRACTICE MODE (FREE)</h3>
+                  <p className="text-xs text-slate-400 font-sans mt-1">
+                    Play offline vs Tactical AI. Wallet connection not required. Ideal for learning fleet placement tactics.
+                  </p>
+                </div>
+                <div className="p-3 bg-[#050B0E] rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                  <div>• Stake: <strong className="text-white">0.00 0G</strong></div>
+                  <div>• Wallet Required: <strong className="text-slate-300">No</strong></div>
+                  <div>• Rewards: <strong className="text-slate-300">Practice Only</strong></div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSelectFreeMode}
+                className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition border border-slate-700 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Play className="w-4 h-4 fill-current" />
+                <span>START FREE PRACTICE</span>
+              </button>
+            </div>
+
+            {/* MODE 2: STAKED AI BATTLE */}
+            <div className="bg-[#091015] border-2 border-emerald-500/50 p-6 rounded-2xl shadow-2xl flex flex-col justify-between space-y-6 hover:border-emerald-500 transition relative overflow-hidden">
+              <div className="absolute top-3 right-3 text-[9px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-500 px-2 py-0.5 rounded uppercase">
+                PLAY & EARN 0G
+              </div>
+
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-950 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                  <Swords className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">STAKED AI BATTLE</h3>
+                  <p className="text-xs text-slate-400 font-sans mt-1">
+                    Stake up to <strong className="text-emerald-400">0.1 0G tokens</strong> in smart contract escrow. Defeat the AI and claim 2x pooled 0G tokens!
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex justify-between">
+                    <span>Select Stake per Match (Max 0.1 0G)</span>
+                    <Coins className="w-3.5 h-3.5 text-emerald-400" />
+                  </label>
+                  <select
+                    value={stakeAmountEth}
+                    onChange={(e) => setStakeAmountEth(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-[#050B0E] border border-slate-800 rounded-xl text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="0.01">0.01 0G Tokens (Prize Pool: 0.02 0G)</option>
+                    <option value="0.05">0.05 0G Tokens (Prize Pool: 0.10 0G)</option>
+                    <option value="0.1">0.10 0G Tokens (Max Stake: 0.20 0G)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSelectStakedMode}
+                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Lock className="w-4 h-4" />
+                <span>STAKE {stakeAmountEth} 0G & DEPLOY FLEET</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : phase === 'STAKING' ? (
+        <div className="flex flex-col items-center justify-center py-8 w-full">
+          <StakingPanel
+            matchIdBytes32={matchIdBytes32}
+            stakeAmountEth={stakeAmountEth}
+            role="host"
+            hasStaked={hasStaked}
+            onStakeConfirmed={handleStakeConfirmed}
+          />
+        </div>
+      ) : phase === 'PLACEMENT' ? (
         <div className="grid lg:grid-cols-12 gap-6 w-full items-start">
           <div className="lg:col-span-8 flex justify-center">
             <BoardGrid
@@ -330,7 +565,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
           </div>
         </div>
       ) : (
-        /* Widescreen Responsive Console View with Central Radar Target Divider (⊕) */
+        /* Widescreen Console View */
         <div className="grid grid-cols-12 gap-6 w-full items-stretch flex-1">
           {/* Left Panel: YOUR FLEET (3 cols) */}
           <div className="col-span-12 lg:col-span-3">
@@ -353,7 +588,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                 />
               </div>
 
-              {/* Central Target Radar Divider (⊕) matching reference image */}
+              {/* Central Target Radar Divider (⊕) */}
               <div className="hidden md:flex flex-col items-center justify-center space-y-2 text-[#64748B]">
                 <div className="w-[1px] h-20 bg-gradient-to-b from-transparent via-[#1C2C3C] to-transparent"></div>
                 <div className="w-7 h-7 rounded-full border border-[#1C2C3C] flex items-center justify-center text-slate-500 bg-[#060D12]">
@@ -391,7 +626,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
             </div>
           </div>
 
-          {/* Right Panel: MATCH INFO & STAKE POOL & LOGS (3 cols) */}
+          {/* Right Panel: MATCH INFO & LOGS (3 cols) */}
           <div className="col-span-12 lg:col-span-3">
             <MatchInfoPanel
               playerAddress={address}
@@ -399,7 +634,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
               isMyTurn={currentTurn === 'PLAYER'}
               playerShipsLeft={playerShipsAlive}
               opponentShipsLeft={aiShipsAlive}
-              stakeAmountEth="0.00"
+              stakeAmountEth={aiMode === 'STAKED' ? stakeAmountEth : '0.00'}
               turnCount={playerShots + aiShots}
               logs={logs}
             />
@@ -411,7 +646,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
       <div className="w-full flex flex-col sm:flex-row items-center justify-between py-3 px-5 bg-[#091015] border border-slate-800 rounded-xl font-mono text-xs text-slate-400">
         <div className="flex items-center space-x-2">
           <Info className="w-4 h-4 text-emerald-400" />
-          <span>Connected to <span className="text-emerald-400 font-bold">0G Network</span></span>
+          <span>Connected to <span className="text-emerald-400 font-bold">0G Mainnet</span></span>
           <span className="mx-2 text-slate-600">•</span>
           <span className="text-slate-300">Good Luck, Commander.</span>
         </div>
@@ -429,7 +664,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         </div>
       </div>
 
-      {/* Accuracy Stats & Winner Declaration Modal */}
+      {/* Accuracy Stats & Winner Declaration & 0G Claim Modal */}
       {showStatsModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in font-mono">
           <div className="bg-[#091015] border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl relative">
@@ -463,6 +698,49 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                 {winner === 'PLAYER' ? 'NAVAL VICTORY!' : 'FLEET DESTROYED!'}
               </h3>
             </div>
+
+            {/* Winner Payout Claim Box (if Staked AI Mode and Player Won) */}
+            {winner === 'PLAYER' && aiMode === 'STAKED' && payoutSignature && (
+              <div className="mb-6 p-4 bg-[#050B0E] rounded-2xl border border-emerald-500/30 text-left space-y-3">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-slate-400">Total Escrow Prize Pool:</span>
+                  <span className="text-emerald-400 font-bold text-sm">{totalPayoutEth} 0G</span>
+                </div>
+
+                {isClaimSuccess && payoutTxHash ? (
+                  <div className="p-3 bg-emerald-950/60 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <span>0G Stake Payout Claimed!</span>
+                    </div>
+                    <a
+                      href={`${ZERO_G_MAINNET.blockExplorers.default.url}/tx/${payoutTxHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] text-emerald-400 underline font-mono flex items-center gap-1"
+                    >
+                      <span>View Claim Tx on 0G Explorer</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                ) : (
+                  <button
+                    disabled={isClaimPending || isClaimMining}
+                    onClick={handleClaimWinnerPayout}
+                    className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs tracking-wider uppercase shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span>
+                      {isClaimPending
+                        ? 'Confirming in Wallet...'
+                        : isClaimMining
+                        ? 'Mining Claim Tx...'
+                        : `Claim ${totalPayoutEth} 0G Pooled Stake`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Accuracy Performance Breakdown Card */}
             <div className="space-y-3 mb-6 text-xs text-left bg-[#050B0E] p-4 rounded-xl border border-slate-800">

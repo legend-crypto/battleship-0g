@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
 import { LocalAIGame } from './components/LocalAIGame';
 import { MultiplayerLobby } from './components/MultiplayerLobby';
 import { MultiplayerBattle } from './components/MultiplayerBattle';
+import { WhitepaperPage } from './components/WhitepaperPage';
 import { X, Trophy, Swords, Info, ShieldCheck } from 'lucide-react';
+import { BATTLESHIP_STAKING_ADDRESS } from './config/contract';
 
-export type GameMode = 'LANDING' | 'LOCAL_AI' | 'MULTIPLAYER_LOBBY' | 'MULTIPLAYER_BATTLE';
-export type NavTab = 'PLAY' | 'MATCHES' | 'LEADERBOARD' | 'ABOUT';
+export type GameMode = 'LANDING' | 'LOCAL_AI' | 'MULTIPLAYER_LOBBY' | 'MULTIPLAYER_BATTLE' | 'WHITEPAPER';
+export type NavTab = 'PLAY' | 'MATCHES' | 'LEADERBOARD' | 'WHITEPAPER' | 'ABOUT';
 
 export const App: React.FC = () => {
   const [mode, setMode] = useState<GameMode>('LANDING');
@@ -17,16 +19,31 @@ export const App: React.FC = () => {
   // Multiplayer session data
   const [multiplayerData, setMultiplayerData] = useState<any>(null);
 
+  // Check URL pathname on initial load for /whitepaper
+  useEffect(() => {
+    if (window.location.pathname === '/whitepaper' || window.location.hash === '#whitepaper') {
+      setMode('WHITEPAPER');
+      setActiveTab('WHITEPAPER');
+    }
+  }, []);
+
   const handleGoHome = () => {
     setMode('LANDING');
     setActiveTab('PLAY');
     setActiveModal(null);
+    if (window.location.pathname === '/whitepaper') {
+      window.history.pushState({}, '', '/');
+    }
   };
 
   const handleSelectTab = (tab: NavTab) => {
     setActiveTab(tab);
     if (tab === 'PLAY') {
       handleGoHome();
+    } else if (tab === 'WHITEPAPER') {
+      setMode('WHITEPAPER');
+      setActiveModal(null);
+      window.history.pushState({}, '', '/whitepaper');
     } else {
       setActiveModal(tab);
     }
@@ -56,7 +73,12 @@ export const App: React.FC = () => {
     setActiveModal(null);
   };
 
-  const isDarkConsoleMode = mode === 'LOCAL_AI' || mode === 'MULTIPLAYER_BATTLE' || mode === 'MULTIPLAYER_LOBBY';
+  const isDarkConsoleMode = mode === 'LOCAL_AI' || mode === 'MULTIPLAYER_BATTLE' || mode === 'MULTIPLAYER_LOBBY' || mode === 'WHITEPAPER';
+
+  // If in WHITEPAPER full page mode, render standalone WhitepaperPage
+  if (mode === 'WHITEPAPER') {
+    return <WhitepaperPage onBackToHome={handleGoHome} />;
+  }
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${
@@ -116,14 +138,14 @@ export const App: React.FC = () => {
               <span>ACTIVE 0G MATCHES</span>
             </h3>
             <p className="text-xs text-slate-400 mb-4 font-sans">
-              Live on-chain escrow matches on 0G Galileo Testnet
+              Live on-chain escrow matches on 0G Mainnet
             </p>
 
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
               <div className="p-3 bg-[#050B0E] border border-slate-800 rounded-xl flex items-center justify-between text-xs">
                 <div>
                   <span className="font-bold text-emerald-400 block">MATCH #BAT824</span>
-                  <span className="text-[10px] text-slate-500">STAKE: 1.00 0G</span>
+                  <span className="text-[10px] text-slate-500">STAKE: 0.10 0G</span>
                 </div>
                 <span className="px-2.5 py-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold">
                   IN PROGRESS
@@ -133,7 +155,7 @@ export const App: React.FC = () => {
               <div className="p-3 bg-[#050B0E] border border-slate-800 rounded-xl flex items-center justify-between text-xs">
                 <div>
                   <span className="font-bold text-slate-300 block">MATCH #NAV192</span>
-                  <span className="text-[10px] text-slate-500">STAKE: 0.50 0G</span>
+                  <span className="text-[10px] text-slate-500">STAKE: 0.05 0G</span>
                 </div>
                 <span className="px-2.5 py-1 rounded bg-slate-900 text-slate-400 border border-slate-700 text-[10px] font-bold">
                   WAITING GUEST
@@ -170,7 +192,7 @@ export const App: React.FC = () => {
               <span>COMMANDER LEADERBOARD</span>
             </h3>
             <p className="text-xs text-slate-400 mb-4 font-sans">
-              Top strategic admirals on 0G Chain
+              Top strategic admirals on 0G Mainnet
             </p>
 
             <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
@@ -182,7 +204,7 @@ export const App: React.FC = () => {
                     <span className="text-[10px] text-slate-500">14 Wins • 82% Accuracy</span>
                   </div>
                 </div>
-                <span className="font-bold text-emerald-400">+14.50 0G</span>
+                <span className="font-bold text-emerald-400">+1.45 0G</span>
               </div>
 
               <div className="p-3 bg-[#050B0E] border border-slate-800 rounded-xl flex items-center justify-between text-xs">
@@ -193,7 +215,7 @@ export const App: React.FC = () => {
                     <span className="text-[10px] text-slate-500">11 Wins • 76% Accuracy</span>
                   </div>
                 </div>
-                <span className="font-bold text-emerald-400">+9.00 0G</span>
+                <span className="font-bold text-emerald-400">+0.90 0G</span>
               </div>
             </div>
 
@@ -223,17 +245,17 @@ export const App: React.FC = () => {
               <span>ABOUT 0G BATTLESHIP</span>
             </h3>
             <p className="text-xs text-slate-400 mb-4 font-sans leading-relaxed">
-              Decentralized naval warfare built on 0G Chain (Galileo Testnet `16602`). Wager 0G tokens, battle in real-time, and claim pooled stake escrow payouts with ECDSA signatures.
+              Decentralized naval warfare built on 0G Mainnet (`16661`). Wager 0G tokens, battle in real-time, and claim pooled stake escrow payouts with ECDSA signatures.
             </p>
 
             <div className="p-4 bg-[#050B0E] border border-slate-800 rounded-xl space-y-2 text-xs text-slate-300 font-sans">
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="font-mono text-slate-500">Escrow Contract:</span>
-                <span className="font-mono text-emerald-400">0x5FbDB2315678afecb367f032d93F642f64180aa3</span>
+                <span className="font-mono text-emerald-400 text-[10px] break-all">{BATTLESHIP_STAKING_ADDRESS}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-mono text-slate-500">Chain ID:</span>
-                <span className="font-mono text-slate-200">16602 (Galileo Testnet)</span>
+                <span className="font-mono text-slate-200">16661 (0G Mainnet)</span>
               </div>
             </div>
 

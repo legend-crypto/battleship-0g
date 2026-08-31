@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { BATTLESHIP_STAKING_ADDRESS, BATTLESHIP_STAKING_ABI } from '../config/contract';
-import { ZERO_G_GALILEO_TESTNET } from '../config/wagmi';
+import { ZERO_G_MAINNET } from '../config/wagmi';
 import { Coins, ExternalLink, ShieldCheck, Lock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { parseEther } from 'viem';
 
@@ -46,7 +46,7 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
           address: BATTLESHIP_STAKING_ADDRESS,
           abi: BATTLESHIP_STAKING_ABI,
           functionName: 'createMatch',
-          args: [matchIdBytes32 as `0x${string}`, valueWei],
+          args: [matchIdBytes32 as `0x${string}`],
           value: valueWei
         });
         setTxHash(hash);
@@ -74,7 +74,7 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
           <span>0G TOKEN ESCROW STAKE</span>
         </h3>
         <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded border border-emerald-500/40">
-          CHAIN ID 16602
+          CHAIN ID 16661
         </span>
       </div>
 
@@ -89,7 +89,7 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
         </div>
         <div className="flex justify-between items-center text-slate-400">
           <span>Network:</span>
-          <span className="text-slate-200 font-semibold">0G Galileo Testnet</span>
+          <span className="text-slate-200 font-semibold">0G Mainnet</span>
         </div>
       </div>
 
@@ -100,11 +100,11 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
             <span>0G Escrow Deposit Confirmed!</span>
           </div>
           <p className="text-[11px] text-emerald-400/80 font-sans">
-            Your stake is safely escrowed in the smart contract. Awaiting opponent deposit confirmation...
+            Your stake is safely escrowed in the smart contract on 0G Mainnet.
           </p>
           {txHash && (
             <a
-              href={`${ZERO_G_GALILEO_TESTNET.blockExplorers.default.url}/tx/${txHash}`}
+              href={`${ZERO_G_MAINNET.blockExplorers.default.url}/tx/${txHash}`}
               target="_blank"
               rel="noreferrer"
               className="text-[10px] text-emerald-400 underline font-mono flex items-center gap-1 mt-1"
@@ -134,7 +134,7 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
               ) : isConfirming ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                  <span>MINING ON 0G TESTNET...</span>
+                  <span>MINING ON 0G MAINNET...</span>
                 </>
               ) : (
                 <>
@@ -147,7 +147,7 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
 
           {txHash && (
             <a
-              href={`${ZERO_G_GALILEO_TESTNET.blockExplorers.default.url}/tx/${txHash}`}
+              href={`${ZERO_G_MAINNET.blockExplorers.default.url}/tx/${txHash}`}
               target="_blank"
               rel="noreferrer"
               className="text-[11px] text-emerald-400 underline font-mono flex items-center justify-center gap-1"
