@@ -3,15 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "build": "echo 'Contracts ready'",
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
     "deploy:testnet": "npx hardhat run scripts/deploy.ts --network zeroGTestnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "@openzeppelin/contracts": "^5.6.1",
-    "dotenv": "^16.6.1",
-    "hardhat": "^2.29.1",
-    "typescript": "^5.9.3"
+    "@openzeppelin/contracts": "^5.0.2",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.5",
+    "typescript": "^5.4.5"
   }
 }

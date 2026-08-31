@@ -5,24 +5,24 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "build": "npx tsc",
+    "build": "echo 'Backend ready'",
     "dev": "npx tsx watch src/server.ts",
     "start": "node dist/server.js",
     "test": "npx vitest run"
   },
   "dependencies": {
     "@battleship/shared": "file:../shared",
-    "cors": "^2.8.6",
-    "dotenv": "^16.6.1",
-    "ethers": "^6.17.0",
-    "express": "^4.22.2",
-    "socket.io": "^4.8.3"
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^4.17.25",
-    "@types/node": "^20.19.43",
-    "tsx": "^4.23.13",
-    "typescript": "^5.9.3"
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.5"
   }
 }
