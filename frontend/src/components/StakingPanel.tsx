@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId, useSwitchChain } from 'wagmi';
 import { BATTLESHIP_STAKING_ADDRESS, BATTLESHIP_STAKING_ABI } from '../config/contract';
 import { ZERO_G_MAINNET } from '../config/wagmi';
-import { Coins, ExternalLink, ShieldCheck, Lock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Coins, ExternalLink, ShieldCheck, Lock, CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { parseEther } from 'viem';
 
 interface StakingPanelProps {
@@ -21,6 +21,9 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
   onStakeConfirmed
 }) => {
   const { isConnected } = useAccount();
+  const currentChainId = useChainId();
+  const { switchChain } = useSwitchChain();
+
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -38,6 +41,16 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
 
   const handleDepositStake = async () => {
     setErrorMessage(null);
+
+    // Auto-switch chain to 0G Mainnet if user's wallet is on a different network
+    if (currentChainId !== ZERO_G_MAINNET.id && switchChain) {
+      try {
+        await switchChain({ chainId: ZERO_G_MAINNET.id });
+      } catch (e) {
+        console.warn('Network switch warning:', e);
+      }
+    }
+
     try {
       const valueWei = parseEther(stakeAmountEth);
 
@@ -47,7 +60,8 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
           abi: BATTLESHIP_STAKING_ABI,
           functionName: 'createMatch',
           args: [matchIdBytes32 as `0x${string}`],
-          value: valueWei
+          value: valueWei,
+          gas: 250000n // Gas safety limit to prevent gas estimation truncations
         });
         setTxHash(hash);
       } else {
@@ -56,15 +70,23 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
           abi: BATTLESHIP_STAKING_ABI,
           functionName: 'joinMatch',
           args: [matchIdBytes32 as `0x${string}`],
-          value: valueWei
+          value: valueWei,
+          gas: 250000n
         });
         setTxHash(hash);
       }
     } catch (err: any) {
       console.error('Staking error:', err);
-      setErrorMessage(err.shortMessage || err.message || 'Transaction rejected');
+      const msg = err.shortMessage || err.message || 'Transaction rejected';
+      if (msg.includes('insufficient funds')) {
+        setErrorMessage('Insufficient 0G token balance in your wallet for stake + gas fee.');
+      } else {
+        setErrorMessage(msg);
+      }
     }
   };
+
+  const isWrongChain = currentChainId !== ZERO_G_MAINNET.id;
 
   return (
     <div className="w-full max-w-md bg-[#091015] border border-slate-800 p-6 rounded-3xl shadow-2xl font-mono text-left space-y-5">
@@ -88,8 +110,8 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
           <span className="text-slate-200 font-mono text-[10px]">BattleshipStaking.sol</span>
         </div>
         <div className="flex justify-between items-center text-slate-400">
-          <span>Network:</span>
-          <span className="text-slate-200 font-semibold">0G Mainnet</span>
+          <span>Target Network:</span>
+          <span className="text-emerald-400 font-semibold">0G Mainnet</span>
         </div>
       </div>
 
@@ -120,6 +142,14 @@ export const StakingPanel: React.FC<StakingPanelProps> = ({
             <div className="p-3 bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs rounded-xl text-center">
               Connect Web3 wallet in header to deposit 0G stake.
             </div>
+          ) : isWrongChain ? (
+            <button
+              onClick={() => switchChain && switchChain({ chainId: ZERO_G_MAINNET.id })}
+              className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>SWITCH WALLET TO 0G MAINNET</span>
+            </button>
           ) : (
             <button
               disabled={isWritePending || isConfirming}

@@ -108,7 +108,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
   const handleSelectFreeMode = () => {
     setAiMode('FREE');
     setPhase('PLACEMENT');
-    addLog('PLAYER', '0G DeAI Practice mode initialized. Deploy your fleet.', 'info');
+    addLog('PLAYER', '0G DeAI Practice mode initiated. Deploy your fleet.', 'info');
   };
 
   const handleSelectStakedMode = () => {
@@ -145,7 +145,8 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
           abi: BATTLESHIP_STAKING_ABI,
           functionName: 'joinMatch',
           args: [matchIdBytes32 as `0x${string}`],
-          value: parseEther(stakeAmountEth)
+          value: parseEther(stakeAmountEth),
+          gas: 250000n
         });
 
         console.log('0G DeAI joinMatch confirmed on-chain:', joinHash);
@@ -311,7 +312,8 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         address: BATTLESHIP_STAKING_ADDRESS,
         abi: BATTLESHIP_STAKING_ABI,
         functionName: 'claimWinnerPayout',
-        args: [matchIdBytes32 as `0x${string}`, payoutSignature as `0x${string}`]
+        args: [matchIdBytes32 as `0x${string}`, payoutSignature as `0x${string}`],
+        gas: 250000n
       });
       setPayoutTxHash(hash);
     } catch (err: any) {
