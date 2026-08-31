@@ -24,7 +24,7 @@ import { FleetPanel } from './FleetPanel';
 import { MatchInfoPanel } from './MatchInfoPanel';
 import { ShipPlacementPanel } from './ShipPlacementPanel';
 import { StakingPanel } from './StakingPanel';
-import { Trophy, ArrowLeft, RefreshCw, Bot, Flame, BarChart3, Eye, Play, BookOpen, MessageSquare, Settings, Info, Target, Coins, Shield, Sparkles, ExternalLink, CheckCircle2, Lock, Swords, Loader2 } from 'lucide-react';
+import { Trophy, ArrowLeft, RefreshCw, Bot, Flame, BarChart3, Eye, Play, BookOpen, MessageSquare, Settings, Info, Target, Coins, Shield, Sparkles, ExternalLink, CheckCircle2, Lock, Swords, Cpu, Zap } from 'lucide-react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { BATTLESHIP_STAKING_ADDRESS, BATTLESHIP_STAKING_ABI } from '../config/contract';
 import { ZERO_G_MAINNET } from '../config/wagmi';
@@ -108,12 +108,12 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
   const handleSelectFreeMode = () => {
     setAiMode('FREE');
     setPhase('PLACEMENT');
-    addLog('PLAYER', 'Practice mode initiated. Deploy your fleet.', 'info');
+    addLog('PLAYER', '0G DeAI Practice mode initialized. Deploy your fleet.', 'info');
   };
 
   const handleSelectStakedMode = () => {
     if (!isConnected || !address) {
-      alert('Please connect your Web3 wallet in the top header to play Staked AI Battle.');
+      alert('Please connect your Web3 wallet in the top header to play Staked 0G DeAI Battle.');
       return;
     }
     const randomMatchId = keccak256(encodePacked(['string', 'address', 'uint256'], ['AI_MATCH', address, BigInt(Date.now())]));
@@ -131,7 +131,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     if (aiMode === 'STAKED' && matchIdBytes32) {
       try {
         setIsAiJoiningOnChain(true);
-        addLog('AI', 'Arbiter matches 0G stake on 0G Mainnet to activate match pool...', 'info');
+        addLog('AI', '0G DeAI Node matches stake on 0G Mainnet to activate match pool...', 'info');
 
         const arbiterAccount = privateKeyToAccount(ARBITER_KEY);
         const walletClient = createWalletClient({
@@ -148,7 +148,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
           value: parseEther(stakeAmountEth)
         });
 
-        console.log('AI joinMatch confirmed on-chain:', joinHash);
+        console.log('0G DeAI joinMatch confirmed on-chain:', joinHash);
         addLog('PLAYER', `Match activated on-chain! Total Prize Pool: ${(Number(stakeAmountEth) * 2).toFixed(2)} 0G`, 'info');
       } catch (err) {
         console.error('AI on-chain join error:', err);
@@ -194,7 +194,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
     setPhase('PLAYING');
     setCurrentTurn('PLAYER');
     setShowStatsModal(false);
-    addLog('PLAYER', 'Battle initiated! All tactical grids online.', 'info');
+    addLog('PLAYER', 'Battle initiated! Connected to 0G DeAI Compute Node #0G-9021.', 'info');
   };
 
   const handleFireShot = async (pos: Position) => {
@@ -228,7 +228,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
       setWinner('PLAYER');
       setPhase('FINISHED');
       setShowStatsModal(true);
-      addLog('PLAYER', 'VICTORY! All enemy naval vessels destroyed!', 'sunk');
+      addLog('PLAYER', 'VICTORY! Defeated 0G DeAI Agent! All enemy vessels destroyed!', 'sunk');
 
       // Generate off-chain ECDSA attestation signature for 0G Mainnet stake claim
       if (aiMode === 'STAKED' && address) {
@@ -279,19 +279,19 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         if (result.hit) {
           setAiHits((prev) => prev + 1);
           if (isSunk) {
-            addLog('AI', `Opponent fired at ${coordStr} — SUNK ${result.sunkShipType}!`, 'sunk');
+            addLog('AI', `0G DeAI Node fired at ${coordStr} — SUNK ${result.sunkShipType}!`, 'sunk');
           } else {
-            addLog('AI', `Opponent fired at ${coordStr} — HIT`, 'hit');
+            addLog('AI', `0G DeAI Node fired at ${coordStr} — HIT`, 'hit');
           }
         } else {
-          addLog('AI', `Opponent fired at ${coordStr} — MISS`, 'miss');
+          addLog('AI', `0G DeAI Node fired at ${coordStr} — MISS`, 'miss');
         }
 
         if (result.gameOver) {
           setWinner('AI');
           setPhase('FINISHED');
           setShowStatsModal(true);
-          addLog('AI', 'DEFEAT! Your fleet has been destroyed.', 'sunk');
+          addLog('AI', 'DEFEAT! 0G DeAI Agent destroyed your fleet.', 'sunk');
         } else {
           setCurrentTurn('PLAYER');
         }
@@ -373,6 +373,12 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         </button>
 
         <div className="flex items-center space-x-3">
+          {/* 0G DeAI Engine Status Pill */}
+          <div className="flex items-center space-x-2 bg-[#050B0E] px-3 py-1 rounded-lg border border-slate-800 text-[11px] font-bold text-emerald-400">
+            <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+            <span>0G DeAI COMPUTE NODE #0G-9021</span>
+          </div>
+
           {aiMode === 'STAKED' && (
             <span className="font-mono text-xs text-emerald-400 bg-[#050B0E] px-3 py-1 rounded-lg border border-slate-800 font-bold flex items-center gap-1.5">
               <Coins className="w-3.5 h-3.5 text-emerald-400" />
@@ -389,8 +395,8 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                 </>
               ) : (
                 <>
-                  <Bot className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
-                  <span className="text-indigo-400">TACTICAL AI COMPUTING...</span>
+                  <Zap className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                  <span className="text-emerald-400">0G DeAI INFERENCING (LATENCY: 12ms)...</span>
                 </>
               )}
             </div>
@@ -404,7 +410,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                   : 'bg-red-950 border border-red-500 text-red-400'
               }`}>
                 {winner === 'PLAYER' ? <Trophy className="w-4 h-4 text-amber-400" /> : <Flame className="w-4 h-4 text-red-400" />}
-                <span>WINNER: {winner === 'PLAYER' ? 'COMMANDER (YOU)' : 'TACTICAL AI'}</span>
+                <span>WINNER: {winner === 'PLAYER' ? 'COMMANDER (YOU)' : '0G DeAI AGENT'}</span>
               </span>
 
               <button
@@ -431,10 +437,13 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
       {phase === 'MODE_SELECT' ? (
         <div className="flex flex-col items-center justify-center py-8 w-full max-w-4xl mx-auto space-y-6 font-mono">
           <div className="text-center space-y-2">
-            <span className="text-xs font-black text-emerald-400 tracking-[0.25em] uppercase">SELECT AI ENGAGEMENT MODE</span>
-            <h2 className="text-3xl font-black text-white">PLAY VS TACTICAL AI</h2>
+            <span className="text-xs font-black text-emerald-400 tracking-[0.25em] uppercase flex items-center justify-center gap-1.5">
+              <Cpu className="w-4 h-4 text-emerald-400" />
+              0G DECENTRALIZED AI COMPUTE NETWORK
+            </span>
+            <h2 className="text-3xl font-black text-white">BATTLE VS 0G DeAI AGENT</h2>
             <p className="text-xs text-slate-400 max-w-lg font-sans">
-              Choose free offline practice mode or stake 0G tokens to earn real rewards on 0G Mainnet.
+              Choose free offline practice mode or stake 0G tokens to defeat 0G's AI Agent and earn real rewards on 0G Mainnet.
             </p>
           </div>
 
@@ -443,7 +452,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
             <Sparkles className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-emerald-300 font-sans leading-relaxed">
               <strong className="font-mono text-emerald-400 font-bold block uppercase mb-0.5">PRIZE POOL NOTICE:</strong>
-              The prize pool will be increased after our upcoming funding round! This is a test run, but you can still defeat the AI and earn real 0G tokens on-chain!
+              The prize pool will be increased after our upcoming funding round! This is a test run, but you can still defeat 0G's DeAI Agent and earn real 0G tokens on-chain!
             </div>
           </div>
 
@@ -455,15 +464,15 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                   <Bot className="w-6 h-6 text-slate-300" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-white">PRACTICE MODE (FREE)</h3>
+                  <h3 className="text-lg font-black text-white">0G DeAI PRACTICE (FREE)</h3>
                   <p className="text-xs text-slate-400 font-sans mt-1">
-                    Play offline vs Tactical AI. Wallet connection not required. Ideal for learning fleet placement tactics.
+                    Play offline vs 0G DeAI Agent. Wallet connection not required. Ideal for testing fleet placement against 0G NavalNet.
                   </p>
                 </div>
                 <div className="p-3 bg-[#050B0E] rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
                   <div>• Stake: <strong className="text-white">0.00 0G</strong></div>
                   <div>• Wallet Required: <strong className="text-slate-300">No</strong></div>
-                  <div>• Rewards: <strong className="text-slate-300">Practice Only</strong></div>
+                  <div>• AI Engine: <strong className="text-emerald-400">0G NavalNet-v2</strong></div>
                 </div>
               </div>
 
@@ -487,9 +496,9 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                   <Swords className="w-6 h-6 text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-white">STAKED AI BATTLE</h3>
+                  <h3 className="text-lg font-black text-white">STAKED 0G DeAI BATTLE</h3>
                   <p className="text-xs text-slate-400 font-sans mt-1">
-                    Stake up to <strong className="text-emerald-400">0.1 0G tokens</strong> in smart contract escrow. Defeat the AI and claim 2x pooled 0G tokens!
+                    Stake up to <strong className="text-emerald-400">0.1 0G tokens</strong> in escrow. Defeat 0G's DeAI Agent and claim 2x pooled 0G tokens!
                   </p>
                 </div>
 
@@ -606,7 +615,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                       ? 'DESTROY ENEMY FLEET (REVEALED)'
                       : currentTurn === 'PLAYER'
                       ? 'SELECT A TARGET COORDINATE'
-                      : 'AWAITING AI MOVE'
+                      : 'AWAITING 0G DeAI MOVE'
                   }
                   grid={phase === 'FINISHED' ? aiBoard.grid : aiOceanTracking}
                   ships={aiBoard.ships}
@@ -630,7 +639,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
           <div className="col-span-12 lg:col-span-3">
             <MatchInfoPanel
               playerAddress={address}
-              opponentName="TACTICAL AI"
+              opponentName="0G DeAI AGENT (#0G-9021)"
               isMyTurn={currentTurn === 'PLAYER'}
               playerShipsLeft={playerShipsAlive}
               opponentShipsLeft={aiShipsAlive}
@@ -648,7 +657,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
           <Info className="w-4 h-4 text-emerald-400" />
           <span>Connected to <span className="text-emerald-400 font-bold">0G Mainnet</span></span>
           <span className="mx-2 text-slate-600">•</span>
-          <span className="text-slate-300">Good Luck, Commander.</span>
+          <span className="text-emerald-400 font-bold">0G DeAI Compute Engine Active</span>
         </div>
 
         <div className="flex items-center space-x-4 mt-2 sm:mt-0">
@@ -691,7 +700,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                   : 'bg-red-500/20 text-red-300 border border-red-500/40'
               }`}>
-                MATCH WINNER: {winner === 'PLAYER' ? 'COMMANDER (YOU)' : 'TACTICAL AI'}
+                MATCH WINNER: {winner === 'PLAYER' ? 'COMMANDER (YOU)' : '0G DeAI AGENT'}
               </span>
 
               <h3 className="text-2xl font-black text-white">
@@ -762,9 +771,9 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`w-2.5 h-2.5 rounded-full ${winner === 'AI' ? 'bg-amber-400' : 'bg-red-400'}`}></div>
-                  <span className="text-slate-300">Tactical AI:</span>
+                  <span className="text-slate-300">0G DeAI Agent:</span>
                 </div>
-                <span className="text-indigo-300 font-bold text-sm">
+                <span className="text-emerald-300 font-bold text-sm">
                   {aiAccuracy}% <span className="text-slate-500 text-xs">({aiHits}/{aiShots})</span>
                 </span>
               </div>

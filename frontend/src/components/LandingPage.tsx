@@ -63,26 +63,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartLocalAI, onStar
 
           {/* Subtitle */}
           <p className="text-slate-700 text-base sm:text-lg font-sans font-semibold leading-relaxed mb-10 max-w-md drop-shadow-sm">
-            Outwit your opponent and sink their fleet. <br />
+            Outwit 0G's Decentralized AI Agent/your Friends and sink their fleet. <br />
             The ocean is yours to dominate.
           </p>
 
           {/* Game Mode Cards */}
           <div className="space-y-4 max-w-md">
-            {/* Play vs AI Card */}
+            {/* Play vs 0G DeAI Card */}
             <div
               onClick={onStartLocalAI}
               className="group p-5 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] border border-slate-800 shadow-2xl shadow-slate-950/20 cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-between"
             >
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                  <Target className="w-6 h-6 text-emerald-400" />
+                  <Cpu className="w-6 h-6 text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="font-mono text-base font-black text-white tracking-wide group-hover:text-emerald-400 transition">
-                    PLAY VS AI
-                  </h3>
-                  <p className="text-xs font-sans text-slate-400 font-medium">Single player (Offline)</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-mono text-base font-black text-white tracking-wide group-hover:text-emerald-400 transition">
+                      BATTLE 0G DeAI AGENT
+                    </h3>
+                    <span className="text-[10px] font-mono font-bold bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40">
+                      0G DeAI NODE
+                    </span>
+                  </div>
+                  <p className="text-xs font-sans text-slate-400 font-medium">Single player vs 0G AI Compute Network</p>
                 </div>
               </div>
               <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition">
@@ -104,7 +109,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartLocalAI, onStar
                     <h3 className="font-mono text-base font-black text-slate-900 tracking-wide group-hover:text-emerald-600 transition">
                       MULTIPLAYER STAKING
                     </h3>
-                    <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
+                    <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-300">
                       ON-CHAIN 0G MAINNET
                     </span>
                   </div>
@@ -128,7 +133,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartLocalAI, onStar
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-white">HOW IT WORKS</h2>
             <p className="text-slate-400 text-xs sm:text-sm font-sans">
-              4 simple steps to deploy your naval fleet, stake 0G tokens, and dominate the high seas.
+              4 simple steps to deploy your naval fleet, stake 0G tokens, and dominate the high seas against 0G DeAI.
             </p>
           </div>
 
@@ -177,7 +182,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartLocalAI, onStar
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900">SYSTEM CAPABILITIES</h2>
             <p className="text-slate-600 text-xs sm:text-sm font-sans">
-              Engineered with authoritative game referee state validation and on-chain escrow security.
+              Engineered with 0G Decentralized AI inference and on-chain escrow security.
             </p>
           </div>
 
@@ -186,9 +191,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartLocalAI, onStar
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
                 <Cpu className="w-5 h-5" />
               </div>
-              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">AUTHORITATIVE SOCKET SERVER</h4>
+              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">0G DECENTRALIZED AI ENGINE</h4>
               <p className="text-xs text-slate-600 font-sans leading-relaxed">
-                Authoritative referee server manages move processing, turn enforcement, and fog-of-war tracking to prevent client tampering.
+                Powered by 0G DeAI compute infrastructure for zero-bias, verifiable naval tactical strategy (0G NavalNet-v2).
               </p>
             </div>
 
@@ -196,7 +201,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartLocalAI, onStar
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
                 <Target className="w-5 h-5" />
               </div>
-              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">TACTICAL PARITY AI</h4>
+              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">TACTICAL PARITY SEARCH</h4>
               <p className="text-xs text-slate-600 font-sans leading-relaxed">
                 Smart Hunt & Target algorithm utilizing checkerboard parity opening search without hidden player data access.
               </p>
@@ -339,7 +344,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartLocalAI, onStar
 
           <div className="flex flex-wrap items-center justify-center gap-6">
             <button onClick={onStartLocalAI} className="hover:text-emerald-400 transition cursor-pointer">
-              PLAY VS AI
+              BATTLE 0G DeAI AGENT
             </button>
             <button onClick={onStartMultiplayer} className="hover:text-emerald-400 transition cursor-pointer">
               MULTIPLAYER STAKING
