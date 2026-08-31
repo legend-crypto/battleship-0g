@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build --workspace=shared && npm run build --workspace=frontend",
+  "buildCommand": "npx vite build",
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
