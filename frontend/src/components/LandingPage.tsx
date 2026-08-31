@@ -1,16 +1,12 @@
 import React from 'react';
 import {
+  Swords,
   Target,
-  Users,
-  ChevronRight,
-  Cpu,
   ShieldCheck,
-  Crosshair,
+  Cpu,
   Coins,
-  Radio,
-  BarChart3,
-  Flame,
-  Award,
+  Eye,
+  RefreshCw,
   Zap,
   Lock,
   Anchor,
@@ -44,19 +40,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartLocalAI, onStar
       {/* ---------------- HERO SECTION ---------------- */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-10 pb-16 lg:pt-16 lg:pb-24 flex flex-col justify-center">
         <div className="max-w-xl">
+          {/* Official Emblem Logo */}
+          <div className="mb-4">
+            <img
+              src="/logo.png"
+              alt="0G Battleship Official Emblem"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-2xl shadow-xl shadow-emerald-500/20"
+            />
+          </div>
+
           {/* Tagline */}
-          <p className="text-xs font-mono font-bold text-emerald-600 tracking-[0.25em] uppercase mb-4 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+          <p className="text-xs font-mono font-black text-emerald-700 tracking-[0.25em] uppercase mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
             STRATEGY. FOCUS. VICTORY.
           </p>
 
-          {/* Headline */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-tight text-slate-900 mb-6 leading-tight">
-            <span className="text-emerald-500 font-mono">0G</span> BATTLESHIP
+          {/* Ultra-Readable Headline */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-tight mb-6 leading-tight drop-shadow">
+            <span className="text-emerald-600 font-mono font-black drop-shadow-sm">0G</span>{' '}
+            <span className="text-slate-950 font-black">BATTLESHIP</span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-slate-600 text-base sm:text-lg font-sans font-medium leading-relaxed mb-10 max-w-md">
+          <p className="text-slate-700 text-base sm:text-lg font-sans font-semibold leading-relaxed mb-10 max-w-md drop-shadow-sm">
             Outwit your opponent and sink their fleet. <br />
             The ocean is yours to dominate.
           </p>
@@ -79,352 +85,278 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartLocalAI, onStar
                   <p className="text-xs font-sans text-slate-400 font-medium">Single player (Offline)</p>
                 </div>
               </div>
-              <div className="w-8 h-8 rounded-full bg-slate-800 group-hover:bg-emerald-500 group-hover:text-slate-950 flex items-center justify-center text-slate-400 transition">
-                <ChevronRight className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition">
+                <Play className="w-4 h-4 fill-current ml-0.5" />
               </div>
             </div>
 
-            {/* Find Opponent Card */}
+            {/* Multiplayer Staking Card */}
             <div
               onClick={onStartMultiplayer}
-              className="group p-5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 shadow-xl shadow-slate-300/40 cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-between"
+              className="group p-5 rounded-2xl bg-white hover:bg-slate-50 border-2 border-emerald-500/40 hover:border-emerald-500 shadow-xl shadow-emerald-500/10 cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-between"
             >
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
-                  <Users className="w-6 h-6 text-emerald-600" />
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                  <Swords className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-mono text-base font-black text-slate-900 tracking-wide group-hover:text-emerald-600 transition">
-                    FIND OPPONENT
-                  </h3>
-                  <p className="text-xs font-sans text-slate-500 font-medium">Multiplayer (Stake 0G)</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-mono text-base font-black text-slate-900 tracking-wide group-hover:text-emerald-600 transition">
+                      MULTIPLAYER STAKING
+                    </h3>
+                    <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
+                      ON-CHAIN 0G MAINNET
+                    </span>
+                  </div>
+                  <p className="text-xs font-sans text-slate-600 font-medium">Stake 0G tokens & battle live players</p>
                 </div>
               </div>
-              <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-emerald-500 group-hover:text-slate-950 flex items-center justify-center text-slate-500 transition">
-                <ChevronRight className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-emerald-500 group-hover:text-slate-950 transition">
+                <Play className="w-4 h-4 fill-current ml-0.5" />
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Feature Badges Strip */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 py-8 border-y border-slate-200/80 bg-white/60 backdrop-blur-md">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-10">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-              <Crosshair className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-mono text-xs font-bold text-slate-900 uppercase">BUILT ON 0G</h4>
-              <p className="text-[11px] font-sans text-slate-500">High performance decentralized cloud</p>
-            </div>
+      {/* ---------------- HOW IT WORKS ---------------- */}
+      <div className="relative z-10 w-full bg-[#091015] text-white py-20 px-6 md:px-12 border-t border-b border-slate-800">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3 font-mono">
+            <span className="text-xs font-black tracking-[0.2em] text-emerald-400 uppercase">
+              COMMAND TACTICS
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-white">HOW IT WORKS</h2>
+            <p className="text-slate-400 text-xs sm:text-sm font-sans">
+              4 simple steps to deploy your naval fleet, stake 0G tokens, and dominate the high seas.
+            </p>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-              <ShieldCheck className="w-5 h-5" />
+          <div className="grid md:grid-cols-4 gap-8">
+            <div className="p-6 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-3 font-mono">
+              <span className="text-2xl font-black text-emerald-400">01</span>
+              <h4 className="text-sm font-bold text-white uppercase">CONNECT & CHOOSE</h4>
+              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                Connect your Web3 wallet (MetaMask) to 0G Mainnet or select offline single-player AI mode.
+              </p>
             </div>
-            <div>
-              <h4 className="font-mono text-xs font-bold text-slate-900 uppercase">SECURE & FAIR</h4>
-              <p className="text-[11px] font-sans text-slate-500">Stake. Compete. Claim your victory.</p>
-            </div>
-          </div>
 
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-              <Cpu className="w-5 h-5" />
+            <div className="p-6 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-3 font-mono">
+              <span className="text-2xl font-black text-emerald-400">02</span>
+              <h4 className="text-sm font-bold text-white uppercase">DEPLOY FLEET</h4>
+              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                Position your 5 naval vessels on the 10x10 tactical ocean grid with horizontal/vertical rotation.
+              </p>
             </div>
-            <div>
-              <h4 className="font-mono text-xs font-bold text-slate-900 uppercase">STRATEGY FIRST</h4>
-              <p className="text-[11px] font-sans text-slate-500">Pure skill. Better decisions win.</p>
+
+            <div className="p-6 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-3 font-mono">
+              <span className="text-2xl font-black text-emerald-400">03</span>
+              <h4 className="text-sm font-bold text-white uppercase">STAKE 0G TOKENS</h4>
+              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                Deposit equal 0G tokens into the smart contract escrow before battle engagement starts.
+              </p>
+            </div>
+
+            <div className="p-6 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-3 font-mono">
+              <span className="text-2xl font-black text-emerald-400">04</span>
+              <h4 className="text-sm font-bold text-white uppercase">CLAIM VICTORY</h4>
+              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                Sink all enemy ships to claim the 2x pooled 0G token stake via signed cryptographic attestation.
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ---------------- SECTION 1: HOW IT WORKS ---------------- */}
-      <section className="relative z-10 w-full py-16 lg:py-24 bg-white/70 backdrop-blur-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="font-mono text-xs font-bold text-emerald-600 uppercase tracking-widest px-3 py-1 bg-emerald-50 rounded-full border border-emerald-200">
-              TACTICAL WORKFLOW
+      {/* ---------------- SYSTEM CAPABILITIES ---------------- */}
+      <div className="relative z-10 w-full py-20 px-6 md:px-12 bg-[#F4F7F6]">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3 font-mono">
+            <span className="text-xs font-black tracking-[0.2em] text-emerald-600 uppercase">
+              PLATFORM FEATURES
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black font-mono text-slate-900 mt-4 mb-4">
-              HOW IT WORKS
-            </h2>
-            <p className="text-slate-600 text-sm sm:text-base font-sans">
-              Experience transparent naval warfare powered by real-time WebSockets and smart contract token staking.
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900">SYSTEM CAPABILITIES</h2>
+            <p className="text-slate-600 text-xs sm:text-sm font-sans">
+              Engineered with authoritative game referee state validation and on-chain escrow security.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Step 1 */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xl shadow-slate-200/50 relative flex flex-col justify-between">
-              <div>
-                <span className="font-mono text-3xl font-black text-emerald-500/40 block mb-3">01</span>
-                <h3 className="font-mono text-base font-bold text-slate-900 mb-2">CONNECT & CHOOSE</h3>
-                <p className="text-xs text-slate-600 font-sans leading-relaxed">
-                  Connect your MetaMask wallet to 0G Galileo Testnet (`16602`) or select offline single-player AI mode.
-                </p>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <Cpu className="w-5 h-5" />
               </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs font-mono font-semibold text-emerald-600">
-                <Coins className="w-4 h-4" />
-                <span>0G Token Ready</span>
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xl shadow-slate-200/50 relative flex flex-col justify-between">
-              <div>
-                <span className="font-mono text-3xl font-black text-emerald-500/40 block mb-3">02</span>
-                <h3 className="font-mono text-base font-bold text-slate-900 mb-2">DEPLOY FLEET</h3>
-                <p className="text-xs text-slate-600 font-sans leading-relaxed">
-                  Strategically position your 5 naval vessels on the 10x10 ocean grid using horizontal or vertical rotation.
-                </p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs font-mono font-semibold text-emerald-600">
-                <Anchor className="w-4 h-4" />
-                <span>5 Fleet Ships</span>
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xl shadow-slate-200/50 relative flex flex-col justify-between">
-              <div>
-                <span className="font-mono text-3xl font-black text-emerald-500/40 block mb-3">03</span>
-                <h3 className="font-mono text-base font-bold text-slate-900 mb-2">STAKE 0G TOKENS</h3>
-                <p className="text-xs text-slate-600 font-sans leading-relaxed">
-                  Both commanders deposit equal 0G tokens into the `BattleshipStaking.sol` smart contract escrow.
-                </p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs font-mono font-semibold text-emerald-600">
-                <Lock className="w-4 h-4" />
-                <span>Escrow Locked</span>
-              </div>
-            </div>
-
-            {/* Step 4 */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xl shadow-slate-200/50 relative flex flex-col justify-between">
-              <div>
-                <span className="font-mono text-3xl font-black text-emerald-500/40 block mb-3">04</span>
-                <h3 className="font-mono text-base font-bold text-slate-900 mb-2">CLAIM VICTORY</h3>
-                <p className="text-xs text-slate-600 font-sans leading-relaxed">
-                  Sink all enemy ships! The winner receives a signed off-chain attestation to claim the 2x pooled 0G stake.
-                </p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs font-mono font-semibold text-emerald-600">
-                <Award className="w-4 h-4 text-amber-500" />
-                <span>Payout Claim</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------------- SECTION 2: CORE FEATURES ---------------- */}
-      <section className="relative z-10 w-full py-16 lg:py-24 bg-[#050B0E] text-slate-100">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="font-mono text-xs font-bold text-emerald-400 uppercase tracking-widest px-3 py-1 bg-emerald-950/80 rounded-full border border-emerald-500/40">
-              SYSTEM CAPABILITIES
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black font-mono text-white mt-4 mb-4">
-              WHY PLAY 0G BATTLESHIP?
-            </h2>
-            <p className="text-slate-400 text-sm sm:text-base font-sans">
-              Engineered with pure TypeScript game logic, real-time Socket.io state sync, and cryptographically verified on-chain claims.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="p-6 rounded-2xl bg-[#091015] border border-slate-800 hover:border-emerald-500/40 transition">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-5">
-                <Zap className="w-6 h-6 text-emerald-400" />
-              </div>
-              <h3 className="font-mono text-base font-bold text-white mb-2">Authoritative Socket Server</h3>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Backend referee server evaluates all hits, misses, and ship destructions to ensure zero client-side manipulation.
+              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">AUTHORITATIVE SOCKET SERVER</h4>
+              <p className="text-xs text-slate-600 font-sans leading-relaxed">
+                Authoritative referee server manages move processing, turn enforcement, and fog-of-war tracking to prevent client tampering.
               </p>
             </div>
 
-            {/* Feature 2 */}
-            <div className="p-6 rounded-2xl bg-[#091015] border border-slate-800 hover:border-emerald-500/40 transition">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-5">
-                <Cpu className="w-6 h-6 text-emerald-400" />
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <Target className="w-5 h-5" />
               </div>
-              <h3 className="font-mono text-base font-bold text-white mb-2">Tactical Parity AI</h3>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Play against a smart Hunt & Target AI utilizing checkerboard parity search and orthogonal hit-chain tracking.
+              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">TACTICAL PARITY AI</h4>
+              <p className="text-xs text-slate-600 font-sans leading-relaxed">
+                Smart Hunt & Target algorithm utilizing checkerboard parity opening search without hidden player data access.
               </p>
             </div>
 
-            {/* Feature 3 */}
-            <div className="p-6 rounded-2xl bg-[#091015] border border-slate-800 hover:border-emerald-500/40 transition">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-5">
-                <Lock className="w-6 h-6 text-emerald-400" />
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <Lock className="w-5 h-5" />
               </div>
-              <h3 className="font-mono text-base font-bold text-white mb-2">0G On-Chain Escrow</h3>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                `BattleshipStaking.sol` smart contract handles stake matching, non-reentrant security, and EIP-191 winner signature claims.
+              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">0G ON-CHAIN ESCROW</h4>
+              <p className="text-xs text-slate-600 font-sans leading-relaxed">
+                Smart contract escrow (`BattleshipStaking.sol`) deployed at `0x6114CB30740c77C37971E0468F7662E3ec52e6Cc` on 0G Mainnet.
               </p>
             </div>
 
-            {/* Feature 4 */}
-            <div className="p-6 rounded-2xl bg-[#091015] border border-slate-800 hover:border-emerald-500/40 transition">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-5">
-                <BarChart3 className="w-6 h-6 text-emerald-400" />
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <Eye className="w-5 h-5" />
               </div>
-              <h3 className="font-mono text-base font-bold text-white mb-2">Post-Match Ship Reveal</h3>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Full end-of-game opponent fleet reveal showing all unhit ship locations alongside precision accuracy analytics.
+              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">POST-MATCH SHIP REVEAL</h4>
+              <p className="text-xs text-slate-600 font-sans leading-relaxed">
+                End-of-game opponent ship placement reveal and precision accuracy analytics modal.
               </p>
             </div>
 
-            {/* Feature 5 */}
-            <div className="p-6 rounded-2xl bg-[#091015] border border-slate-800 hover:border-emerald-500/40 transition">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-5">
-                <Radio className="w-6 h-6 text-emerald-400" />
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <RefreshCw className="w-5 h-5" />
               </div>
-              <h3 className="font-mono text-base font-bold text-white mb-2">Disconnect Protection</h3>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                60-second reconnect grace window for page refreshes mid-match, plus 1-hour lockup timeout refund paths.
+              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">DISCONNECT PROTECTION</h4>
+              <p className="text-xs text-slate-600 font-sans leading-relaxed">
+                60-second grace window for page refreshes mid-match, plus emergency 1-hour timeout refund paths.
               </p>
             </div>
 
-            {/* Feature 6 */}
-            <div className="p-6 rounded-2xl bg-[#091015] border border-slate-800 hover:border-emerald-500/40 transition">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-5">
-                <Crosshair className="w-6 h-6 text-emerald-400" />
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <Coins className="w-5 h-5" />
               </div>
-              <h3 className="font-mono text-base font-bold text-white mb-2">Built for 0G Galileo Testnet</h3>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Targeting 0G Galileo Testnet (Chain ID `16602`, RPC `evmrpc-testnet.0g.ai`) for zero-friction Web3 testing.
+              <h4 className="font-mono text-sm font-black text-slate-900 uppercase">BUILT FOR 0G CHAIN</h4>
+              <p className="text-xs text-slate-600 font-sans leading-relaxed">
+                Direct EVM integration targeting 0G Mainnet (`16661`) and 0G Galileo Testnet (`16602`).
               </p>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* ---------------- SECTION 3: FLEET VESSEL SPECS ---------------- */}
-      <section className="relative z-10 w-full py-16 border-b border-slate-200 bg-white">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-          <div className="text-center max-w-xl mx-auto mb-12">
-            <span className="font-mono text-xs font-bold text-emerald-600 uppercase tracking-widest px-3 py-1 bg-emerald-50 rounded-full border border-emerald-200">
-              NAVAL ARSENAL
+      {/* ---------------- FLEET SPECIFICATIONS ---------------- */}
+      <div className="relative z-10 w-full bg-[#091015] text-white py-20 px-6 md:px-12 border-t border-slate-800 font-mono">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
+            <span className="text-xs font-black tracking-[0.2em] text-emerald-400 uppercase">
+              VESSEL RECONNAISSANCE
             </span>
-            <h2 className="text-3xl font-black font-mono text-slate-900 mt-3 mb-2">
-              STANDARD FLEET COMPOSITION
-            </h2>
-            <p className="text-slate-600 text-xs font-sans">
-              Each commander commands 5 vessels totaling 17 hull grid points.
+            <h2 className="text-3xl sm:text-4xl font-black text-white">STANDARD FLEET COMPOSITION</h2>
+            <p className="text-slate-400 text-xs sm:text-sm font-sans">
+              Each commander controls 5 naval vessels spanning 17 total grid target cells.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 font-mono">
-            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-slate-200 text-center">
-              <span className="text-xs font-bold text-slate-900 block">CARRIER</span>
-              <span className="text-[10px] text-slate-500 block mb-2">5 GRID CELLS</span>
-              <div className="flex justify-center space-x-1">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="p-5 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-white uppercase">CARRIER</span>
+                <span className="text-emerald-400 font-bold">5 CELLS</span>
+              </div>
+              <div className="flex space-x-1">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="w-3 h-3 rounded-sm bg-emerald-500 shadow-sm"></div>
+                  <div key={i} className="h-4 flex-1 bg-emerald-500/20 border border-emerald-500/50 rounded-sm"></div>
                 ))}
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-slate-200 text-center">
-              <span className="text-xs font-bold text-slate-900 block">BATTLESHIP</span>
-              <span className="text-[10px] text-slate-500 block mb-2">4 GRID CELLS</span>
-              <div className="flex justify-center space-x-1">
+            <div className="p-5 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-white uppercase">BATTLESHIP</span>
+                <span className="text-emerald-400 font-bold">4 CELLS</span>
+              </div>
+              <div className="flex space-x-1">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="w-3 h-3 rounded-sm bg-emerald-500 shadow-sm"></div>
+                  <div key={i} className="h-4 flex-1 bg-emerald-500/20 border border-emerald-500/50 rounded-sm"></div>
                 ))}
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-slate-200 text-center">
-              <span className="text-xs font-bold text-slate-900 block">CRUISER</span>
-              <span className="text-[10px] text-slate-500 block mb-2">3 GRID CELLS</span>
-              <div className="flex justify-center space-x-1">
+            <div className="p-5 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-white uppercase">CRUISER</span>
+                <span className="text-emerald-400 font-bold">3 CELLS</span>
+              </div>
+              <div className="flex space-x-1">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="w-3 h-3 rounded-sm bg-emerald-500 shadow-sm"></div>
+                  <div key={i} className="h-4 flex-1 bg-emerald-500/20 border border-emerald-500/50 rounded-sm"></div>
                 ))}
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-slate-200 text-center">
-              <span className="text-xs font-bold text-slate-900 block">DESTROYER</span>
-              <span className="text-[10px] text-slate-500 block mb-2">2 GRID CELLS</span>
-              <div className="flex justify-center space-x-1">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <div key={i} className="w-3 h-3 rounded-sm bg-emerald-500 shadow-sm"></div>
+            <div className="p-5 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-white uppercase">SUBMARINE</span>
+                <span className="text-emerald-400 font-bold">3 CELLS</span>
+              </div>
+              <div className="flex space-x-1">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-4 flex-1 bg-emerald-500/20 border border-emerald-500/50 rounded-sm"></div>
                 ))}
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-slate-200 text-center">
-              <span className="text-xs font-bold text-slate-900 block">SUBMARINE</span>
-              <span className="text-[10px] text-slate-500 block mb-2">2 GRID CELLS</span>
-              <div className="flex justify-center space-x-1">
+            <div className="p-5 bg-[#050B0E] border border-slate-800 rounded-2xl space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-white uppercase">DESTROYER</span>
+                <span className="text-emerald-400 font-bold">2 CELLS</span>
+              </div>
+              <div className="flex space-x-1">
                 {Array.from({ length: 2 }).map((_, i) => (
-                  <div key={i} className="w-3 h-3 rounded-sm bg-emerald-500 shadow-sm"></div>
+                  <div key={i} className="h-4 flex-1 bg-emerald-500/20 border border-emerald-500/50 rounded-sm"></div>
                 ))}
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* ---------------- SECTION 4: CALL TO ACTION BANNER & FOOTER ---------------- */}
-      <footer className="relative z-10 w-full bg-[#050B0E] text-slate-400 border-t border-slate-800">
-        {/* CTA Box */}
-        <div className="max-w-7xl mx-auto px-6 md:px-12 py-16 text-center">
-          <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-[#091015] to-[#050B0E] border border-slate-800 shadow-2xl max-w-3xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-black font-mono text-white mb-3">
-              READY TO COMMAND THE OCEAN?
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto mb-8 font-sans">
-              Test your naval tactics against our AI or stake 0G tokens against real human commanders worldwide.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
-                onClick={onStartLocalAI}
-                className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-mono font-bold text-xs rounded-xl border border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Target className="w-4 h-4 text-emerald-400" />
-                <span>PLAY VS AI (OFFLINE)</span>
-              </button>
-              <button
-                onClick={onStartMultiplayer}
-                className="w-full sm:w-auto px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-black text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Users className="w-4 h-4" />
-                <span>MULTIPLAYER STAKING LOBBY</span>
-              </button>
+      {/* ---------------- CTA FOOTER ---------------- */}
+      <footer className="relative z-10 w-full bg-[#050B0E] border-t border-slate-800 py-12 px-6 md:px-12 font-mono text-slate-400 text-xs">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center space-x-3">
+            <img
+              src="/logo.png"
+              alt="0G Battleship Logo"
+              className="w-10 h-10 object-contain rounded-xl shadow-md shadow-emerald-500/20"
+            />
+            <div>
+              <div className="text-white font-bold text-sm">0G BATTLESHIP</div>
+              <div className="text-[10px] text-emerald-400">NAVAL WARFARE ON 0G MAINNET</div>
             </div>
           </div>
-        </div>
 
-        {/* Footer Sub-bar */}
-        <div className="border-t border-slate-900 py-6 px-6 md:px-12 font-mono text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-2">
-            <span className="font-bold text-emerald-400">0G BATTLESHIP</span>
-            <span>• Decentralized Naval Warfare on 0G Galileo Testnet</span>
-          </div>
-
-          <div className="flex items-center space-x-6">
+          <div className="flex flex-wrap items-center justify-center gap-6">
+            <button onClick={onStartLocalAI} className="hover:text-emerald-400 transition cursor-pointer">
+              PLAY VS AI
+            </button>
+            <button onClick={onStartMultiplayer} className="hover:text-emerald-400 transition cursor-pointer">
+              MULTIPLAYER STAKING
+            </button>
             <a
-              href="https://chainscan-galileo.0g.ai"
+              href="https://chainscan.0g.ai/address/0x6114CB30740c77C37971E0468F7662E3ec52e6Cc"
               target="_blank"
               rel="noreferrer"
               className="hover:text-emerald-400 transition flex items-center gap-1"
             >
-              <span>0G Explorer</span>
+              <span>0G MAINNET EXPLORER</span>
               <ExternalLink className="w-3 h-3" />
             </a>
-            <span>Contract: 0x5FbD...80aa3</span>
+          </div>
+
+          <div className="text-center md:text-right text-[10px]">
+            &copy; 2026 0G Battleship. Built for 0G Network.
           </div>
         </div>
       </footer>

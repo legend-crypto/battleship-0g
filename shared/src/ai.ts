@@ -8,10 +8,6 @@ export interface AIState {
   currentHitChain: Position[];
 }
 
-/**
- * DEBUG FLAG FOR AUDIT VERIFICATION
- * Set to `true` to log AI decision inputs, mode, and target selection on every turn.
- */
 export const DEBUG_AI_LOGGING = false;
 
 /**
@@ -25,9 +21,6 @@ export function createInitialAIState(): AIState {
   };
 }
 
-/**
- * Helper to check if a position has already been fired upon (HIT or MISS).
- */
 function isAlreadyTargeted(grid: CellStatus[][], pos: Position): boolean {
   if (pos.x < 0 || pos.x >= BOARD_SIZE || pos.y < 0 || pos.y >= BOARD_SIZE) {
     return true;
@@ -63,7 +56,7 @@ export function getNextAIMove(
   if (validQueue.length > 0) {
     const nextPos = validQueue[0];
     const remainingQueue = validQueue.slice(1);
-    
+
     if (DEBUG_AI_LOGGING) {
       console.log('[AI DEBUG] getNextAIMove Executed', {
         functionName: 'getNextAIMove',

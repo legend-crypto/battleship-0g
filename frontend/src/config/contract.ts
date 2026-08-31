@@ -1,6 +1,10 @@
+export const BATTLESHIP_STAKING_MAINNET_ADDRESS = '0x6114CB30740c77C37971E0468F7662E3ec52e6Cc' as `0x${string}`;
+export const BATTLESHIP_STAKING_TESTNET_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+
+// Default active contract for website: 0G Mainnet Deployed Smart Contract
 export const BATTLESHIP_STAKING_ADDRESS =
   (import.meta.env.VITE_STAKING_CONTRACT_ADDRESS as `0x${string}`) ||
-  '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+  BATTLESHIP_STAKING_MAINNET_ADDRESS;
 
 export const BATTLESHIP_STAKING_ABI = [
   {

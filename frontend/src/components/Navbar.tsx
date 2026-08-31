@@ -31,99 +31,132 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, onGoHome
 
   return (
     <header className={`w-full py-4 px-4 sm:px-8 lg:px-12 flex items-center justify-between z-40 transition-colors ${
-      isDarkTheme ? 'bg-[#050B0E]/95 border-b border-slate-800/80 backdrop-blur-md' : 'bg-transparent'
+      isDarkTheme ? 'bg-[#050B0E]/95 border-b border-slate-800/80 backdrop-blur-md' : 'bg-[#F4F7F6]/90 backdrop-blur-sm border-b border-slate-200/80'
     }`}>
-      {/* Brand Logo (Clicking navigates to Landing Home page!) */}
+      {/* Brand Logo & Ultra-Readable Title */}
       <div
         className="flex items-center space-x-3 cursor-pointer group"
         onClick={handleLogoClick}
         title="Return to Home / Landing Page"
       >
-        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center font-black font-mono text-emerald-400 text-lg shadow-sm group-hover:scale-105 transition-transform">
-          0G
-        </div>
+        <img
+          src="/logo.png"
+          alt="0G Battleship Logo"
+          className="w-10 h-10 object-contain rounded-xl shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform"
+        />
         <div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-black text-xl tracking-wider text-emerald-500 font-mono">0G</span>
-            <span className={`font-black text-xl tracking-wider font-mono ${isDarkTheme ? 'text-white' : 'text-slate-900'}`}>
-              BATTLESHIP
-            </span>
-          </div>
-          <p className="text-[10px] font-mono tracking-widest text-slate-400 uppercase font-semibold">
-            BUILT ON <span className="text-emerald-500 font-bold">0G NETWORK</span>
+          <h1 className="font-mono text-base sm:text-lg font-black tracking-wider flex items-center gap-1.5 drop-shadow-sm">
+            <span className="text-emerald-600 font-extrabold">0G</span>
+            <span className={isDarkTheme ? 'text-white' : 'text-slate-950 font-black'}>BATTLESHIP</span>
+          </h1>
+          <p className="text-[10px] font-mono text-emerald-600 font-bold uppercase tracking-widest -mt-1">
+            BUILT ON <span className="text-emerald-600 font-extrabold">0G NETWORK</span>
           </p>
         </div>
       </div>
 
-      {/* Desktop Navigation Tabs */}
-      <nav className="hidden md:flex items-center space-x-8 font-mono text-xs tracking-widest font-bold">
-        {(['PLAY', 'MATCHES', 'LEADERBOARD', 'ABOUT'] as const).map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <button
-              key={tab}
-              onClick={() => handleNavClick(tab)}
-              className={`relative py-1.5 transition-all cursor-pointer uppercase ${
-                isActive
-                  ? 'text-emerald-500 font-extrabold'
-                  : isDarkTheme
-                  ? 'text-slate-400 hover:text-white'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span>{tab === 'PLAY' ? 'HOME / PLAY' : tab}</span>
-              {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-full shadow-sm shadow-emerald-500/50"></span>
-              )}
-            </button>
-          );
-        })}
+      {/* Desktop Navigation Links */}
+      <nav className="hidden md:flex items-center space-x-8 font-mono text-xs font-bold tracking-wider">
+        <button
+          onClick={() => handleNavClick('PLAY')}
+          className={`flex items-center space-x-1.5 transition-colors cursor-pointer py-1 ${
+            activeTab === 'PLAY'
+              ? 'text-emerald-600 border-b-2 border-emerald-600 pb-0.5'
+              : isDarkTheme ? 'text-slate-400 hover:text-slate-200' : 'text-slate-700 hover:text-slate-950'
+          }`}
+        >
+          <Home className="w-3.5 h-3.5" />
+          <span>HOME / PLAY</span>
+        </button>
+
+        <button
+          onClick={() => handleNavClick('MATCHES')}
+          className={`transition-colors cursor-pointer py-1 ${
+            activeTab === 'MATCHES'
+              ? 'text-emerald-600 border-b-2 border-emerald-600 pb-0.5'
+              : isDarkTheme ? 'text-slate-400 hover:text-slate-200' : 'text-slate-700 hover:text-slate-950'
+          }`}
+        >
+          MATCHES
+        </button>
+
+        <button
+          onClick={() => handleNavClick('LEADERBOARD')}
+          className={`transition-colors cursor-pointer py-1 ${
+            activeTab === 'LEADERBOARD'
+              ? 'text-emerald-600 border-b-2 border-emerald-600 pb-0.5'
+              : isDarkTheme ? 'text-slate-400 hover:text-slate-200' : 'text-slate-700 hover:text-slate-950'
+          }`}
+        >
+          LEADERBOARD
+        </button>
+
+        <button
+          onClick={() => handleNavClick('ABOUT')}
+          className={`transition-colors cursor-pointer py-1 ${
+            activeTab === 'ABOUT'
+              ? 'text-emerald-600 border-b-2 border-emerald-600 pb-0.5'
+              : isDarkTheme ? 'text-slate-400 hover:text-slate-200' : 'text-slate-700 hover:text-slate-950'
+          }`}
+        >
+          ABOUT
+        </button>
       </nav>
 
-      {/* Right Controls: Network Selector + Wallet + Mobile Menu Toggle */}
-      <div className="flex items-center space-x-3">
+      {/* Network Selector Pill & Wallet Connection Button */}
+      <div className="hidden sm:flex items-center space-x-4">
         {/* Network Selector Pill */}
-        <div className={`hidden lg:flex items-center space-x-2 px-3.5 py-1.5 rounded-lg border text-xs font-mono font-semibold cursor-pointer transition ${
-          isDarkTheme
-            ? 'bg-[#091015] border-slate-800 text-slate-300 hover:border-slate-700'
-            : 'bg-white/80 border-slate-200 text-slate-700 hover:border-slate-300 shadow-sm backdrop-blur'
+        <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border text-xs font-mono font-bold ${
+          isDarkTheme ? 'bg-[#091015] border-slate-800 text-slate-200' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
         }`}>
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>GALILEO TESTNET</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>0G MAINNET (16661)</span>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
         </div>
 
+        {/* Wallet Connect Button */}
         <WalletConnect />
+      </div>
 
-        {/* Mobile Hamburger Toggle */}
+      {/* Mobile Hamburger Menu Toggle */}
+      <div className="flex sm:hidden items-center space-x-2">
+        <WalletConnect />
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className={`md:hidden p-2 rounded-lg border text-slate-400 hover:text-white transition ${
-            isDarkTheme ? 'bg-[#091015] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-          }`}
-          title="Toggle Navigation Menu"
+          className="p-2 text-slate-700 hover:text-slate-950 rounded-lg bg-white border border-slate-300 shadow-sm"
         >
           {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>
 
-      {/* Mobile Slide-Out Menu */}
+      {/* Mobile Slide-down Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-x-0 top-[72px] bg-[#091015] border-b border-slate-800 p-4 shadow-2xl z-50 flex flex-col space-y-3 font-mono text-xs font-bold animate-fade-in">
-          {(['PLAY', 'MATCHES', 'LEADERBOARD', 'ABOUT'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleNavClick(tab)}
-              className={`py-2.5 px-4 rounded-lg text-left transition flex items-center justify-between uppercase ${
-                activeTab === tab
-                  ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/40'
-                  : 'text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <span>{tab === 'PLAY' ? 'HOME / PLAY' : tab}</span>
-              {tab === 'PLAY' && <Home className="w-4 h-4 text-emerald-400" />}
-            </button>
-          ))}
+        <div className="absolute top-full left-0 w-full bg-slate-950 border-b border-slate-800 p-4 space-y-3 font-mono text-xs font-bold md:hidden shadow-2xl z-50">
+          <button
+            onClick={() => handleNavClick('PLAY')}
+            className="block w-full text-left py-2 px-3 rounded-lg text-emerald-400 bg-slate-900 flex items-center space-x-2"
+          >
+            <Home className="w-4 h-4" />
+            <span>HOME / PLAY</span>
+          </button>
+          <button
+            onClick={() => handleNavClick('MATCHES')}
+            className="block w-full text-left py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-900"
+          >
+            MATCHES
+          </button>
+          <button
+            onClick={() => handleNavClick('LEADERBOARD')}
+            className="block w-full text-left py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-900"
+          >
+            LEADERBOARD
+          </button>
+          <button
+            onClick={() => handleNavClick('ABOUT')}
+            className="block w-full text-left py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-900"
+          >
+            ABOUT
+          </button>
         </div>
       )}
     </header>
