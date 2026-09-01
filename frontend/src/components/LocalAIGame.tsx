@@ -28,17 +28,13 @@ import { Trophy, ArrowLeft, RefreshCw, Bot, Flame, BarChart3, Eye, Play, BookOpe
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { BATTLESHIP_STAKING_ADDRESS, BATTLESHIP_STAKING_ABI } from '../config/contract';
 import { ZERO_G_MAINNET } from '../config/wagmi';
-import { privateKeyToAccount } from 'viem/accounts';
-import { createWalletClient, http, keccak256, encodePacked, parseEther } from 'viem';
+import { keccak256, encodePacked, parseEther } from 'viem';
 
 interface LocalAIGameProps {
   onBackToMenu: () => void;
 }
 
 type AIMode = 'FREE' | 'STAKED';
-
-// Trusted Arbiter Key matching 0G Mainnet contract arbiter (0xb5aDc622a510f66E467e603377d62da5667c1f20)
-const ARBITER_KEY = '0xfd9b76f4e98112193ac346bb83d9a3160ae3e731d04273302d20c6a6339ada0f' as `0x${string}`;
 
 export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
   const { address, isConnected } = useAccount();
@@ -126,38 +122,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
   const handleStakeConfirmed = async (txHash: string) => {
     setHasStaked(true);
     setStakeTxHash(txHash);
-
-    // AI/Arbiter matching stake deposit to activate match (MatchStatus.Active) and fund 2x payout pool
-    if (aiMode === 'STAKED' && matchIdBytes32) {
-      try {
-        setIsAiJoiningOnChain(true);
-        addLog('AI', '0G DeAI Node matches stake on 0G Mainnet to activate match pool...', 'info');
-
-        const arbiterAccount = privateKeyToAccount(ARBITER_KEY);
-        const walletClient = createWalletClient({
-          account: arbiterAccount,
-          chain: ZERO_G_MAINNET as any,
-          transport: http('https://evmrpc.0g.ai')
-        });
-
-        const joinHash = await walletClient.writeContract({
-          address: BATTLESHIP_STAKING_ADDRESS,
-          abi: BATTLESHIP_STAKING_ABI,
-          functionName: 'joinMatch',
-          args: [matchIdBytes32 as `0x${string}`],
-          value: parseEther(stakeAmountEth),
-          gas: 250000n
-        });
-
-        console.log('0G DeAI joinMatch confirmed on-chain:', joinHash);
-        addLog('PLAYER', `Match activated on-chain! Total Prize Pool: ${(Number(stakeAmountEth) * 2).toFixed(2)} 0G`, 'info');
-      } catch (err) {
-        console.error('AI on-chain join error:', err);
-      } finally {
-        setIsAiJoiningOnChain(false);
-      }
-    }
-
+    addLog('PLAYER', `0G Stake deposited into 0G Mainnet Escrow! (TxHash: ${txHash.slice(0, 10)}...)`, 'info');
     setPhase('PLACEMENT');
   };
 
@@ -230,26 +195,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
       setPhase('FINISHED');
       setShowStatsModal(true);
       addLog('PLAYER', 'VICTORY! Defeated 0G DeAI Agent! All enemy vessels destroyed!', 'sunk');
-
-      // Generate off-chain ECDSA attestation signature for 0G Mainnet stake claim
-      if (aiMode === 'STAKED' && address) {
-        try {
-          const totalPayoutWei = parseEther(stakeAmountEth) * 2n;
-          const messageHash = keccak256(
-            encodePacked(
-              ['string', 'bytes32', 'address', 'uint256'],
-              ['WINNER_PAYOUT', matchIdBytes32 as `0x${string}`, address as `0x${string}`, totalPayoutWei]
-            )
-          );
-          const arbiterAccount = privateKeyToAccount(ARBITER_KEY);
-          const sig = await arbiterAccount.signMessage({
-            message: { raw: messageHash }
-          });
-          setPayoutSignature(sig);
-        } catch (err) {
-          console.error('Attestation signature error:', err);
-        }
-      }
     } else {
       setCurrentTurn('AI');
     }
@@ -357,8 +302,8 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
   const playerAccuracy = playerShots > 0 ? Math.round((playerHits / playerShots) * 100) : 0;
   const aiAccuracy = aiShots > 0 ? Math.round((aiHits / aiShots) * 100) : 0;
 
-  const playerShipsAlive = FLEET_SHIPS.length - playerBoard.ships.filter((s) => s.hits >= s.size).length;
-  const aiShipsAlive = FLEET_SHIPS.length - aiBoard.ships.filter((s) => s.hits >= s.size).length;
+  const playerShipsAlive = FLEET_SHIPS.length - playerBoard.ships.filter((s) => s.sunk || s.hits >= (s.length || SHIP_SIZES[s.type])).length;
+  const aiShipsAlive = FLEET_SHIPS.length - aiBoard.ships.filter((s) => s.sunk || s.hits >= (s.length || SHIP_SIZES[s.type])).length;
 
   const totalPayoutEth = (Number(stakeAmountEth) * 2).toFixed(2);
 
@@ -449,7 +394,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
             </p>
           </div>
 
-          {/* User Requested Prize Pool Note Banner */}
           <div className="w-full p-4 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl flex items-start gap-3 shadow-lg">
             <Sparkles className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-emerald-300 font-sans leading-relaxed">
@@ -578,15 +522,12 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
       ) : (
         /* Widescreen Console View */
         <div className="grid grid-cols-12 gap-6 w-full items-stretch flex-1">
-          {/* Left Panel: YOUR FLEET (3 cols) */}
           <div className="col-span-12 lg:col-span-3">
             <FleetPanel ships={playerBoard.ships} onSurrender={handleSurrender} />
           </div>
 
-          {/* Middle Section: DUAL BOARDS + CENTRAL RADAR DIVIDER (6 cols) */}
           <div className="col-span-12 lg:col-span-6 flex flex-col items-center justify-center">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-center justify-items-center w-full">
-              {/* YOUR WATERS */}
               <div className="w-full max-w-[480px]">
                 <BoardGrid
                   title="YOUR WATERS"
@@ -599,7 +540,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                 />
               </div>
 
-              {/* Central Target Radar Divider (⊕) */}
               <div className="hidden md:flex flex-col items-center justify-center space-y-2 text-[#64748B]">
                 <div className="w-[1px] h-20 bg-gradient-to-b from-transparent via-[#1C2C3C] to-transparent"></div>
                 <div className="w-7 h-7 rounded-full border border-[#1C2C3C] flex items-center justify-center text-slate-500 bg-[#060D12]">
@@ -608,7 +548,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
                 <div className="w-[1px] h-20 bg-gradient-to-b from-transparent via-[#1C2C3C] to-transparent"></div>
               </div>
 
-              {/* ENEMY WATERS */}
               <div className="w-full max-w-[480px]">
                 <BoardGrid
                   title="ENEMY WATERS"
@@ -637,7 +576,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
             </div>
           </div>
 
-          {/* Right Panel: MATCH INFO & LOGS (3 cols) */}
           <div className="col-span-12 lg:col-span-3">
             <MatchInfoPanel
               playerAddress={address}
@@ -653,29 +591,7 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
         </div>
       )}
 
-      {/* Bottom Console Status Bar */}
-      <div className="w-full flex flex-col sm:flex-row items-center justify-between py-3 px-5 bg-[#091015] border border-slate-800 rounded-xl font-mono text-xs text-slate-400">
-        <div className="flex items-center space-x-2">
-          <Info className="w-4 h-4 text-emerald-400" />
-          <span>Connected to <span className="text-emerald-400 font-bold">0G Mainnet</span></span>
-          <span className="mx-2 text-slate-600">•</span>
-          <span className="text-emerald-400 font-bold">0G DeAI Compute Engine Active</span>
-        </div>
-
-        <div className="flex items-center space-x-4 mt-2 sm:mt-0">
-          <button className="hover:text-emerald-400 transition cursor-pointer" title="Documentation">
-            <BookOpen className="w-4 h-4" />
-          </button>
-          <button className="hover:text-emerald-400 transition cursor-pointer" title="Match Chat">
-            <MessageSquare className="w-4 h-4" />
-          </button>
-          <button className="hover:text-emerald-400 transition cursor-pointer" title="Settings">
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Accuracy Stats & Winner Declaration & 0G Claim Modal */}
+      {/* Accuracy Stats Modal */}
       {showStatsModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in font-mono">
           <div className="bg-[#091015] border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl relative">
@@ -695,7 +611,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
               )}
             </div>
 
-            {/* Prominent Winner Declaration */}
             <div className="mb-4">
               <span className={`inline-block px-4 py-1 rounded-full text-xs font-black tracking-widest uppercase mb-2 ${
                 winner === 'PLAYER'
@@ -710,50 +625,6 @@ export const LocalAIGame: React.FC<LocalAIGameProps> = ({ onBackToMenu }) => {
               </h3>
             </div>
 
-            {/* Winner Payout Claim Box (if Staked AI Mode and Player Won) */}
-            {winner === 'PLAYER' && aiMode === 'STAKED' && payoutSignature && (
-              <div className="mb-6 p-4 bg-[#050B0E] rounded-2xl border border-emerald-500/30 text-left space-y-3">
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-slate-400">Total Escrow Prize Pool:</span>
-                  <span className="text-emerald-400 font-bold text-sm">{totalPayoutEth} 0G</span>
-                </div>
-
-                {isClaimSuccess && payoutTxHash ? (
-                  <div className="p-3 bg-emerald-950/60 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      <span>0G Stake Payout Claimed!</span>
-                    </div>
-                    <a
-                      href={`${ZERO_G_MAINNET.blockExplorers.default.url}/tx/${payoutTxHash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[10px] text-emerald-400 underline font-mono flex items-center gap-1"
-                    >
-                      <span>View Claim Tx on 0G Explorer</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                ) : (
-                  <button
-                    disabled={isClaimPending || isClaimMining}
-                    onClick={handleClaimWinnerPayout}
-                    className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs tracking-wider uppercase shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Shield className="w-4 h-4" />
-                    <span>
-                      {isClaimPending
-                        ? 'Confirming in Wallet...'
-                        : isClaimMining
-                        ? 'Mining Claim Tx...'
-                        : `Claim ${totalPayoutEth} 0G Pooled Stake`}
-                    </span>
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Accuracy Performance Breakdown Card */}
             <div className="space-y-3 mb-6 text-xs text-left bg-[#050B0E] p-4 rounded-xl border border-slate-800">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                 <span className="text-slate-400 font-semibold uppercase">ACCURACY REPORT</span>

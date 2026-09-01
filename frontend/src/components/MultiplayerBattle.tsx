@@ -12,7 +12,8 @@ import {
   createEmptyBoard,
   isValidPlacement,
   placeShip,
-  generateRandomBoard
+  generateRandomBoard,
+  processShot
 } from '@battleship/shared';
 import { socketService } from '../services/socket';
 import { StakingPanel } from './StakingPanel';
@@ -152,9 +153,8 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
         } else {
           setOppShots((prev) => prev + 1);
           setMyBoard((prevBoard) => {
-            const newGrid = prevBoard.grid.map((row) => [...row]);
-            newGrid[data.pos.y][data.pos.x] = data.hit ? CellStatus.HIT : CellStatus.MISS;
-            return { ...prevBoard, grid: newGrid };
+            const { updatedBoard } = processShot(prevBoard, data.pos);
+            return updatedBoard;
           });
 
           if (data.hit) {
@@ -294,9 +294,9 @@ export const MultiplayerBattle: React.FC<MultiplayerBattleProps> = ({ matchData,
   const myAccuracy = myShots > 0 ? Math.round((myHits / myShots) * 100) : 0;
   const oppAccuracy = oppShots > 0 ? Math.round((oppHits / oppShots) * 100) : 0;
 
-  const myShipsAlive = FLEET_SHIPS.length - myBoard.ships.filter((s) => s.hits >= s.size).length;
+  const myShipsAlive = FLEET_SHIPS.length - myBoard.ships.filter((s) => s.sunk || s.hits >= (s.length || SHIP_SIZES[s.type])).length;
   const oppShipsAlive = opponentBoard
-    ? FLEET_SHIPS.length - opponentBoard.ships.filter((s) => s.hits >= s.size).length
+    ? FLEET_SHIPS.length - opponentBoard.ships.filter((s) => s.sunk || s.hits >= (s.length || SHIP_SIZES[s.type])).length
     : 5;
 
   const isWinner = winnerId ? winnerId === matchData.playerId : false;

@@ -8,10 +8,20 @@ interface FleetPanelProps {
 }
 
 export const FleetPanel: React.FC<FleetPanelProps> = ({ ships, onSurrender }) => {
-  const getShipStatus = (type: ShipType) => {
+  const getShipDetails = (type: ShipType) => {
+    const size = SHIP_SIZES[type];
     const placed = ships.find((s) => s.type === type);
-    if (!placed) return { status: 'NOT PLACED', alive: true };
-    return { status: placed.hits >= placed.size ? 'SUNK' : 'ALIVE', alive: placed.hits < placed.size };
+    if (!placed) return { status: 'NOT PLACED', isSunk: false, hitCount: 0, size };
+
+    const hitCount = placed.hits ?? 0;
+    const isSunk = placed.sunk || hitCount >= size;
+
+    return {
+      status: isSunk ? 'SUNK' : 'ALIVE',
+      isSunk,
+      hitCount,
+      size
+    };
   };
 
   return (
@@ -26,9 +36,7 @@ export const FleetPanel: React.FC<FleetPanelProps> = ({ ships, onSurrender }) =>
         {/* Fleet List */}
         <div className="space-y-3">
           {FLEET_SHIPS.map((type) => {
-            const size = SHIP_SIZES[type];
-            const { status, alive } = getShipStatus(type);
-            const isSunk = status === 'SUNK';
+            const { status, isSunk, hitCount, size } = getShipDetails(type);
 
             return (
               <div key={type} className="flex flex-col space-y-1.5 p-2.5 rounded-xl bg-[#081017] border border-[#1C2C3C]">
@@ -45,18 +53,23 @@ export const FleetPanel: React.FC<FleetPanelProps> = ({ ships, onSurrender }) =>
                   </span>
                 </div>
 
-                {/* Segment Blocks */}
+                {/* Segment Blocks — Shows individual hit damage */}
                 <div className="flex space-x-1">
-                  {Array.from({ length: size }).map((_, idx) => (
-                    <div
-                      key={idx}
-                      className={`h-5 flex-1 rounded-sm border transition-all ${
-                        isSunk
-                          ? 'bg-red-950/80 border-red-500 text-red-500'
-                          : 'bg-[#064E3B] border border-[#10B981] shadow-sm shadow-emerald-500/20'
-                      }`}
-                    ></div>
-                  ))}
+                  {Array.from({ length: size }).map((_, idx) => {
+                    const isHitSegment = idx < hitCount;
+                    return (
+                      <div
+                        key={idx}
+                        className={`h-5 flex-1 rounded-sm border transition-all ${
+                          isSunk
+                            ? 'bg-red-950 border-red-500 text-red-500 shadow-sm shadow-red-500/20'
+                            : isHitSegment
+                            ? 'bg-red-500 border-red-400 shadow-sm shadow-red-500/30'
+                            : 'bg-[#064E3B] border border-[#10B981] shadow-sm shadow-emerald-500/20'
+                        }`}
+                      ></div>
+                    );
+                  })}
                 </div>
               </div>
             );
